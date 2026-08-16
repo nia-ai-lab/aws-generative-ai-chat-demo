@@ -39,6 +39,23 @@ describe('application infrastructure', () => {
       RetentionInDays: 7,
       KmsKeyId: Match.anyValue(),
     });
+
+    const runtimeRetentions = Object.values(template.findResources('Custom::LogRetention'))
+      .filter((resource: any) =>
+        resource.Properties?.RetentionInDays === 7 &&
+        JSON.stringify(resource.Properties?.LogGroupName).includes('/aws/bedrock-agentcore/runtimes/'),
+      );
+    expect(runtimeRetentions).toHaveLength(2);
+    expect(runtimeRetentions.every((resource: any) =>
+      resource.DependsOn?.some((logicalId: string) => logicalId.includes('ChatAgentRuntime')),
+    )).toBe(true);
+
+    const runtimeEncryptionResources = Object.values(template.findResources('Custom::AWS'))
+      .filter((resource: any) => JSON.stringify(resource.Properties?.Create).includes('associateKmsKey'));
+    expect(runtimeEncryptionResources).toHaveLength(2);
+    expect(runtimeEncryptionResources.every((resource: any) =>
+      JSON.stringify(resource.Properties?.Delete).includes('disassociateKmsKey'),
+    )).toBe(true);
   });
 
   it('grants the Runtime only the short-term Memory operations it uses', () => {

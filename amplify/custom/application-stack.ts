@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  ArnFormat,
   Duration,
   RemovalPolicy,
   Stack,
@@ -15,6 +16,7 @@ import {
   aws_lambda_nodejs as lambdaNode,
   aws_logs as logs,
 } from 'aws-cdk-lib';
+import * as customResources from 'aws-cdk-lib/custom-resources';
 import type { Construct } from 'constructs';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -62,6 +64,61 @@ function nodeFunction(
       target: 'node22',
     },
   });
+}
+
+function manageAgentRuntimeLogGroup(
+  scope: Construct,
+  id: string,
+  logGroupName: string,
+  logKey: kms.IKey,
+  runtime: agentcore.Runtime,
+): void {
+  const retention = new logs.LogRetention(scope, `${id}Retention`, {
+    logGroupName,
+    retention: logs.RetentionDays.ONE_WEEK,
+    removalPolicy: RemovalPolicy.DESTROY,
+    logRetentionRetryOptions: { maxRetries: 12 },
+  });
+  retention.node.addDependency(runtime);
+
+  const logGroupArn = Stack.of(scope).formatArn({
+    service: 'logs',
+    resource: 'log-group',
+    resourceName: `${logGroupName}:*`,
+    arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+  });
+  const encryption = new customResources.AwsCustomResource(scope, `${id}Encryption`, {
+    onCreate: {
+      service: 'CloudWatchLogs',
+      action: 'associateKmsKey',
+      parameters: { logGroupName, kmsKeyId: logKey.keyArn },
+      physicalResourceId: customResources.PhysicalResourceId.of(logGroupName),
+    },
+    onUpdate: {
+      service: 'CloudWatchLogs',
+      action: 'associateKmsKey',
+      parameters: { logGroupName, kmsKeyId: logKey.keyArn },
+      physicalResourceId: customResources.PhysicalResourceId.of(logGroupName),
+    },
+    onDelete: {
+      service: 'CloudWatchLogs',
+      action: 'disassociateKmsKey',
+      parameters: { logGroupName },
+      ignoreErrorCodesMatching: 'ResourceNotFoundException',
+    },
+    policy: customResources.AwsCustomResourcePolicy.fromStatements([
+      new iam.PolicyStatement({
+        actions: ['logs:AssociateKmsKey', 'logs:DisassociateKmsKey'],
+        resources: [logGroupArn],
+      }),
+      new iam.PolicyStatement({
+        actions: ['kms:DescribeKey'],
+        resources: [logKey.keyArn],
+      }),
+    ]),
+    installLatestAwsSdk: false,
+  });
+  encryption.node.addDependency(retention);
 }
 
 export function createApplicationResources(scope: Construct, props: ApplicationStackProps) {
@@ -201,13 +258,9 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     description: 'Live training endpoint.',
   });
 
-  const runtimeLogs = new logs.LogGroup(scope, 'AgentRuntimeLogs', {
-    logGroupName: `/aws/bedrock-agentcore/runtimes/${runtime.agentRuntimeId}-DEFAULT`,
-    encryptionKey: logKey,
-    retention: logs.RetentionDays.ONE_WEEK,
-    removalPolicy: RemovalPolicy.DESTROY,
-  });
-  runtimeLogs.node.addDependency(runtime);
+  const runtimeLogGroupPrefix = `/aws/bedrock-agentcore/runtimes/${runtime.agentRuntimeId}`;
+  manageAgentRuntimeLogGroup(scope, 'AgentRuntimeDefaultLogs', `${runtimeLogGroupPrefix}-DEFAULT`, logKey, runtime);
+  manageAgentRuntimeLogGroup(scope, 'AgentRuntimeEndpointLogs', `${runtimeLogGroupPrefix}-LiveEndpoint`, logKey, runtime);
 
   const commonEnvironment = { CONFIG_TABLE_NAME: configTable.tableName };
   const authorizerFunction = nodeFunction(

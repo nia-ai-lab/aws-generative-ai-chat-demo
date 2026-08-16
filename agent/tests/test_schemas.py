@@ -20,6 +20,8 @@ def valid_invocation() -> dict[str, object]:
             "topP": None,
             "maxOutputTokens": 1_024,
         },
+        "guardrailId": "",
+        "guardrailVersion": "",
     }
 
 
@@ -40,21 +42,39 @@ def test_empty_admin_system_prompt_is_accepted() -> None:
 
 def test_generation_config_boundaries_are_enforced() -> None:
     with pytest.raises(ValidationError):
-        ChatInvocation.model_validate({
-            **valid_invocation(),
-            "generationConfig": {
-                "temperature": 1.1,
-                "topP": None,
-                "maxOutputTokens": 1_024,
-            },
-        })
+        ChatInvocation.model_validate(
+            {
+                **valid_invocation(),
+                "generationConfig": {
+                    "temperature": 1.1,
+                    "topP": None,
+                    "maxOutputTokens": 1_024,
+                },
+            }
+        )
 
     with pytest.raises(ValidationError):
-        ChatInvocation.model_validate({
+        ChatInvocation.model_validate(
+            {
+                **valid_invocation(),
+                "generationConfig": {
+                    "temperature": 0.3,
+                    "topP": None,
+                    "maxOutputTokens": 4_097,
+                },
+            }
+        )
+
+
+def test_guardrail_id_and_version_must_be_supplied_together() -> None:
+    with pytest.raises(ValidationError):
+        ChatInvocation.model_validate({**valid_invocation(), "guardrailId": "guardrail-id"})
+
+    invocation = ChatInvocation.model_validate(
+        {
             **valid_invocation(),
-            "generationConfig": {
-                "temperature": 0.3,
-                "topP": None,
-                "maxOutputTokens": 4_097,
-            },
-        })
+            "guardrailId": "guardrail-id",
+            "guardrailVersion": "1",
+        }
+    )
+    assert invocation.guardrailVersion == "1"

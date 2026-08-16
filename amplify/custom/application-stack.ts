@@ -18,6 +18,11 @@ import {
 } from 'aws-cdk-lib';
 import * as customResources from 'aws-cdk-lib/custom-resources';
 import type { Construct } from 'constructs';
+import {
+  GUARDRAIL_POLICY_KEYS,
+  effectiveGuardrailKey,
+  type GuardrailPolicyKey,
+} from '../../shared/guardrail-catalog.js';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(currentDirectory, '../..');
@@ -25,6 +30,159 @@ const repositoryRoot = path.resolve(currentDirectory, '../..');
 interface ApplicationStackProps {
   userPool: cognito.IUserPool;
   userPoolClient: cognito.IUserPoolClient;
+}
+
+interface GuardrailDeployment {
+  guardrailId: string;
+  guardrailVersion: string;
+}
+
+interface DeployedGuardrails {
+  catalog: Record<string, GuardrailDeployment>;
+  guardrails: bedrock.CfnGuardrail[];
+  guardrailArns: string[];
+  profileArns: string[];
+}
+
+const GUARDRAIL_DEFINITION_VERSION = 1;
+const GUARDRAIL_NAME_CODES: Record<GuardrailPolicyKey, string> = {
+  'content-safety': 'content',
+  'prompt-attack': 'attack',
+  'sensitive-information': 'pii',
+  'denied-topic-travel': 'travel',
+  'blocked-word-pineapple': 'pineapple',
+};
+
+function guardrailPolicyProperties(
+  policies: GuardrailPolicyKey[],
+): Pick<bedrock.CfnGuardrailProps,
+  'contentPolicyConfig' | 'sensitiveInformationPolicyConfig' | 'topicPolicyConfig' | 'wordPolicyConfig'> {
+  const contentFilters: bedrock.CfnGuardrail.ContentFilterConfigProperty[] = [];
+  if (policies.includes('content-safety')) {
+    contentFilters.push(...['HATE', 'INSULTS', 'SEXUAL', 'VIOLENCE', 'MISCONDUCT'].map((type) => ({
+      type,
+      inputStrength: 'MEDIUM',
+      outputStrength: 'MEDIUM',
+      inputAction: 'BLOCK',
+      outputAction: 'BLOCK',
+      inputEnabled: true,
+      outputEnabled: true,
+    })));
+  }
+  if (policies.includes('prompt-attack')) {
+    contentFilters.push({
+      type: 'PROMPT_ATTACK',
+      inputStrength: 'HIGH',
+      outputStrength: 'NONE',
+      inputAction: 'BLOCK',
+      outputAction: 'NONE',
+      inputEnabled: true,
+      outputEnabled: false,
+    });
+  }
+
+  return {
+    contentPolicyConfig: contentFilters.length > 0 ? {
+      filtersConfig: contentFilters,
+      contentFiltersTierConfig: { tierName: 'STANDARD' },
+    } : undefined,
+    sensitiveInformationPolicyConfig: policies.includes('sensitive-information') ? {
+      piiEntitiesConfig: ['EMAIL', 'PHONE'].map((type) => ({
+        type,
+        action: 'ANONYMIZE',
+        inputAction: 'ANONYMIZE',
+        outputAction: 'ANONYMIZE',
+        inputEnabled: true,
+        outputEnabled: true,
+      })),
+    } : undefined,
+    topicPolicyConfig: policies.includes('denied-topic-travel') ? {
+      topicsConfig: [{
+        name: 'Travel',
+        definition: '旅行、観光地、宿泊施設、旅程、移動手段、旅行先の推薦に関する話題',
+        examples: [
+          '東京旅行のおすすめを教えて',
+          '京都の観光地を紹介して',
+          '週末の旅行プランを作って',
+        ],
+        type: 'DENY',
+        inputAction: 'BLOCK',
+        outputAction: 'BLOCK',
+        inputEnabled: true,
+        outputEnabled: true,
+      }],
+      topicsTierConfig: { tierName: 'STANDARD' },
+    } : undefined,
+    wordPolicyConfig: policies.includes('blocked-word-pineapple') ? {
+      wordsConfig: [{
+        text: 'パイナップル',
+        inputAction: 'BLOCK',
+        outputAction: 'BLOCK',
+        inputEnabled: true,
+        outputEnabled: true,
+      }],
+    } : undefined,
+  };
+}
+
+function createGuardrailCatalog(scope: Construct): DeployedGuardrails {
+  const stack = Stack.of(scope);
+  const profileArn = stack.formatArn({
+    service: 'bedrock',
+    resource: 'guardrail-profile',
+    resourceName: 'apac.guardrail.v1:0',
+    arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
+  });
+  const apacDestinationRegions = [
+    'ap-south-1',
+    'ap-northeast-3',
+    'ap-northeast-2',
+    'ap-southeast-1',
+    'ap-southeast-2',
+    'ap-northeast-1',
+  ];
+  const profileArns = apacDestinationRegions.map((region) =>
+    `arn:${stack.partition}:bedrock:${region}:${stack.account}:guardrail-profile/apac.guardrail.v1:0`);
+  const combinations: GuardrailPolicyKey[][] = [];
+  GUARDRAIL_POLICY_KEYS.forEach((first, firstIndex) => {
+    combinations.push([first]);
+    GUARDRAIL_POLICY_KEYS.slice(firstIndex + 1).forEach((second) => combinations.push([first, second]));
+  });
+
+  const catalog: Record<string, GuardrailDeployment> = {};
+  const guardrails: bedrock.CfnGuardrail[] = [];
+  for (const policies of combinations) {
+    const suffix = policies.map((key) => GUARDRAIL_NAME_CODES[key]).join('-');
+    const constructSuffix = policies.map((key) => GUARDRAIL_NAME_CODES[key][0].toUpperCase()
+      + GUARDRAIL_NAME_CODES[key].slice(1)).join('');
+    const guardrail = new bedrock.CfnGuardrail(scope, `ChatGuardrail${constructSuffix}`, {
+      name: `genai-chat-gr-${suffix}`,
+      description: `Training guardrail preset: ${policies.join(', ')}`,
+      blockedInputMessaging: '選択したGuardrailにより入力がブロックされました。',
+      blockedOutputsMessaging: '選択したGuardrailにより回答がブロックされました。',
+      crossRegionConfig: { guardrailProfileArn: profileArn },
+      ...guardrailPolicyProperties(policies),
+    });
+    guardrail.applyRemovalPolicy(RemovalPolicy.DESTROY);
+    const version = new bedrock.CfnGuardrailVersion(
+      scope,
+      `ChatGuardrail${constructSuffix}VersionV${GUARDRAIL_DEFINITION_VERSION}`,
+      {
+        guardrailIdentifier: guardrail.attrGuardrailId,
+        description: `Immutable training definition v${GUARDRAIL_DEFINITION_VERSION}`,
+      },
+    );
+    version.addResourceDependency(guardrail);
+    const key = policies.length === 1
+      ? effectiveGuardrailKey('none', policies[0])
+      : effectiveGuardrailKey(policies[0], policies[1]);
+    catalog[key] = {
+      guardrailId: guardrail.attrGuardrailId,
+      guardrailVersion: version.attrVersion,
+    };
+    guardrails.push(guardrail);
+  }
+  return { catalog, guardrails, guardrailArns: guardrails.map((guardrail) => guardrail.attrGuardrailArn), profileArns };
 }
 
 function functionLogGroup(scope: Construct, id: string, functionName: string, key: kms.IKey): logs.LogGroup {
@@ -147,29 +305,7 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     removalPolicy: RemovalPolicy.DESTROY,
   });
 
-  const guardrail = new bedrock.CfnGuardrail(scope, 'ChatGuardrail', {
-    name: 'generative-ai-chat-guardrail',
-    description: 'Baseline safeguards for the training chat application.',
-    blockedInputMessaging: 'この内容には回答できません。別の質問をお試しください。',
-    blockedOutputsMessaging: '安全上の理由により、この回答は表示できません。',
-    contentPolicyConfig: {
-      filtersConfig: [
-        { type: 'HATE', inputStrength: 'HIGH', outputStrength: 'HIGH' },
-        { type: 'INSULTS', inputStrength: 'MEDIUM', outputStrength: 'MEDIUM' },
-        { type: 'SEXUAL', inputStrength: 'HIGH', outputStrength: 'HIGH' },
-        { type: 'VIOLENCE', inputStrength: 'HIGH', outputStrength: 'HIGH' },
-        { type: 'MISCONDUCT', inputStrength: 'HIGH', outputStrength: 'HIGH' },
-        { type: 'PROMPT_ATTACK', inputStrength: 'HIGH', outputStrength: 'NONE' },
-      ],
-    },
-    sensitiveInformationPolicyConfig: {
-      piiEntitiesConfig: [
-        { type: 'AWS_ACCESS_KEY', action: 'BLOCK' },
-        { type: 'AWS_SECRET_KEY', action: 'BLOCK' },
-        { type: 'PASSWORD', action: 'BLOCK' },
-      ],
-    },
-  });
+  const deployedGuardrails = createGuardrailCatalog(scope);
 
   const memory = new agentcore.CfnMemory(scope, 'ShortTermMemory', {
     name: 'GenerativeAIChatMemory',
@@ -184,7 +320,7 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     description: 'Least-privilege execution role for the training chat agent.',
   });
   runtimeRole.addToPolicy(new iam.PolicyStatement({
-    actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream', 'bedrock:ApplyGuardrail'],
+    actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
     resources: [
       `arn:${stack.partition}:bedrock:*:${stack.account}:inference-profile/global.anthropic.claude-sonnet-5`,
       `arn:${stack.partition}:bedrock:*:${stack.account}:inference-profile/jp.amazon.nova-2-lite-v1:0`,
@@ -192,8 +328,11 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
       `arn:${stack.partition}:bedrock:*::foundation-model/anthropic.claude-sonnet-5*`,
       `arn:${stack.partition}:bedrock:*::foundation-model/amazon.nova-2-lite*`,
       `arn:${stack.partition}:bedrock:*::foundation-model/amazon.nova-pro*`,
-      guardrail.attrGuardrailArn,
     ],
+  }));
+  runtimeRole.addToPolicy(new iam.PolicyStatement({
+    actions: ['bedrock:ApplyGuardrail'],
+    resources: [...deployedGuardrails.guardrailArns, ...deployedGuardrails.profileArns],
   }));
   runtimeRole.addToPolicy(new iam.PolicyStatement({
     actions: ['bedrock-agentcore:CreateEvent', 'bedrock-agentcore:ListEvents', 'bedrock-agentcore:GetEvent'],
@@ -243,8 +382,6 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     ),
     environmentVariables: {
       MEMORY_ID: memory.attrMemoryId,
-      GUARDRAIL_ID: guardrail.attrGuardrailId,
-      GUARDRAIL_VERSION: 'DRAFT',
     },
     lifecycleConfiguration: {
       idleRuntimeSessionTimeout: Duration.minutes(15),
@@ -252,7 +389,7 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     },
     tracingEnabled: true,
   });
-  runtime.node.addDependency(memory, guardrail);
+  runtime.node.addDependency(memory, ...deployedGuardrails.guardrails);
   runtime.addEndpoint('LiveEndpoint', {
     version: runtime.agentRuntimeVersion ?? '1',
     description: 'Live training endpoint.',
@@ -292,6 +429,7 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
       ...commonEnvironment,
       AGENT_RUNTIME_ARN: runtime.agentRuntimeArn,
       AGENT_RUNTIME_QUALIFIER: 'LiveEndpoint',
+      GUARDRAIL_CATALOG_JSON: stack.toJsonString(deployedGuardrails.catalog),
     },
     35,
     Duration.seconds(90),

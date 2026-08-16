@@ -20,6 +20,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         configVersion: config.configVersion,
         defaultModelKey: config.defaultModelKey,
         models: PUBLIC_MODELS.filter((model) => config.enabledModelKeys.includes(model.key)),
+        requiredGuardrailKey: config.requiredGuardrailKey,
       });
     }
 
@@ -39,6 +40,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       defaultModelKey: input.defaultModelKey,
       enabledModelKeys: input.enabledModelKeys,
       defaultSystemPrompt: input.defaultSystemPrompt,
+      requiredGuardrailKey: input.requiredGuardrailKey,
       updatedAt: new Date().toISOString(),
       updatedBy: auth.sub,
     };
@@ -57,12 +59,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       configVersion: updated.configVersion,
       defaultModelKey: updated.defaultModelKey,
       enabledModelKeys: updated.enabledModelKeys,
+      requiredGuardrailKey: updated.requiredGuardrailKey,
     }));
     return jsonResponse(event, 200, {
       configVersion: updated.configVersion,
       defaultModelKey: updated.defaultModelKey,
       enabledModelKeys: updated.enabledModelKeys,
       defaultSystemPrompt: updated.defaultSystemPrompt,
+      requiredGuardrailKey: updated.requiredGuardrailKey,
       updatedAt: updated.updatedAt,
       updatedBy: updated.updatedBy,
     });

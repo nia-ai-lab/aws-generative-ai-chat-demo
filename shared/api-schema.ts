@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { generationConfigSchema } from './generation-config.js';
+import { guardrailKeySchema } from './guardrail-catalog.js';
 import { MODEL_KEYS } from './model-catalog.js';
 
 const modelKeySchema = z.enum(MODEL_KEYS);
@@ -20,6 +21,7 @@ export const chatRequestSchema = z.object({
   modelKey: modelKeySchema,
   message: z.string().trim().min(1).max(8_000),
   userSystemPrompt: z.string().max(4_000).default(''),
+  guardrailKey: guardrailKeySchema.default('none'),
   timeZone: timeZoneSchema,
   generationConfig: generationConfigSchema,
 });
@@ -30,6 +32,7 @@ export const publicConfigSchema = z.object({
   configVersion: z.number().int().positive(),
   defaultModelKey: modelKeySchema,
   models: z.array(z.object({ key: modelKeySchema, label: z.string().min(1) })).min(1),
+  requiredGuardrailKey: guardrailKeySchema,
 });
 
 export type PublicConfig = z.infer<typeof publicConfigSchema>;
@@ -39,6 +42,7 @@ export const adminConfigSchema = z.object({
   defaultModelKey: modelKeySchema,
   enabledModelKeys: z.array(modelKeySchema).min(1),
   defaultSystemPrompt: z.string().max(8_000),
+  requiredGuardrailKey: guardrailKeySchema,
   updatedAt: z.string(),
   updatedBy: z.string(),
 });
@@ -51,6 +55,7 @@ export const updateAdminConfigSchema = z
     defaultModelKey: modelKeySchema,
     enabledModelKeys: z.array(modelKeySchema).min(1),
     defaultSystemPrompt: z.string().trim().max(8_000),
+    requiredGuardrailKey: guardrailKeySchema,
   })
   .superRefine((value, context) => {
     if (!value.enabledModelKeys.includes(value.defaultModelKey)) {

@@ -78,4 +78,20 @@ describe('application infrastructure', () => {
       resource.Properties?.Integration?.ResponseTransferMode === 'STREAM',
     )).toBe(true);
   });
+
+  it('creates versioned opt-in guardrail presets and their combinations', () => {
+    template.resourceCountIs('AWS::Bedrock::Guardrail', 15);
+    template.resourceCountIs('AWS::Bedrock::GuardrailVersion', 15);
+    template.hasResourceProperties('AWS::Bedrock::Guardrail', {
+      TopicPolicyConfig: {
+        TopicsConfig: Match.arrayWith([Match.objectLike({ Name: 'Travel', Type: 'DENY' })]),
+        TopicsTierConfig: { TierName: 'STANDARD' },
+      },
+    });
+    template.hasResourceProperties('AWS::Bedrock::Guardrail', {
+      WordPolicyConfig: {
+        WordsConfig: Match.arrayWith([Match.objectLike({ Text: 'パイナップル' })]),
+      },
+    });
+  });
 });

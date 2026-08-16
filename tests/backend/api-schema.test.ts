@@ -8,6 +8,7 @@ const validChat = {
   modelKey: 'claude-sonnet-5',
   message: '生成AIとは何ですか？',
   userSystemPrompt: '',
+  guardrailKey: 'none',
   timeZone: 'Asia/Tokyo',
   generationConfig: {
     temperature: 0.3,
@@ -44,6 +45,12 @@ describe('chat request validation', () => {
       generationConfig: { temperature: 0.3, topP: null, maxOutputTokens: 4_097 },
     })).toThrow();
   });
+
+  it('accepts only predefined participant guardrails', () => {
+    expect(chatRequestSchema.parse({ ...validChat, guardrailKey: 'denied-topic-travel' }).guardrailKey)
+      .toBe('denied-topic-travel');
+    expect(() => chatRequestSchema.parse({ ...validChat, guardrailKey: 'custom-value' })).toThrow();
+  });
 });
 
 describe('admin config validation', () => {
@@ -53,6 +60,7 @@ describe('admin config validation', () => {
       defaultModelKey: 'claude-sonnet-5',
       enabledModelKeys: ['claude-sonnet-5'],
       defaultSystemPrompt: '',
+      requiredGuardrailKey: 'none',
     });
     expect(result.defaultSystemPrompt).toBe('');
   });
@@ -63,6 +71,7 @@ describe('admin config validation', () => {
       defaultModelKey: 'claude-sonnet-5',
       enabledModelKeys: ['nova-2-lite'],
       defaultSystemPrompt: '安全に回答する',
+      requiredGuardrailKey: 'content-safety',
     })).toThrow();
   });
 });

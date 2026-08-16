@@ -21,8 +21,6 @@ from schemas import ChatInvocation
 
 REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 MEMORY_ID = os.getenv("MEMORY_ID", "")
-GUARDRAIL_ID = os.getenv("GUARDRAIL_ID", "")
-GUARDRAIL_VERSION = os.getenv("GUARDRAIL_VERSION", "DRAFT")
 
 
 @lru_cache(maxsize=32)
@@ -31,13 +29,16 @@ def model_for(
     temperature: float,
     top_p: float | None,
     max_output_tokens: int,
+    guardrail_id: str,
+    guardrail_version: str,
 ) -> ChatBedrockConverse:
     guardrails: dict[str, Any] | None = None
-    if GUARDRAIL_ID:
+    if guardrail_id:
         guardrails = {
-            "guardrailIdentifier": GUARDRAIL_ID,
-            "guardrailVersion": GUARDRAIL_VERSION,
-            "trace": "enabled",
+            "guardrailIdentifier": guardrail_id,
+            "guardrailVersion": guardrail_version,
+            "trace": "disabled",
+            "streamProcessingMode": "sync",
         }
     model_options: dict[str, Any] = {
         "model": model_id,
@@ -63,6 +64,8 @@ class ChatContext:
     temperature: float
     top_p: float | None
     max_output_tokens: int
+    guardrail_id: str
+    guardrail_version: str
 
 
 def messages_for_model(
@@ -89,6 +92,8 @@ async def call_model(
         context.temperature,
         context.top_p,
         context.max_output_tokens,
+        context.guardrail_id,
+        context.guardrail_version,
     ).ainvoke(messages_for_model(system_prompt, state["messages"]))
     return {"messages": [response]}
 
@@ -131,6 +136,8 @@ async def stream_chat(invocation: ChatInvocation) -> AsyncIterator[dict[str, Any
         temperature=invocation.generationConfig.temperature,
         top_p=invocation.generationConfig.topP,
         max_output_tokens=invocation.generationConfig.maxOutputTokens,
+        guardrail_id=invocation.guardrailId,
+        guardrail_version=invocation.guardrailVersion,
     )
     final_metadata: dict[str, Any] = {}
     async for chunk, _metadata in GRAPH.astream(

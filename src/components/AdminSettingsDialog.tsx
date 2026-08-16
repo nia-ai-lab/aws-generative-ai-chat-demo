@@ -1,5 +1,10 @@
 import { useState } from 'react';
 import type { AdminConfig, UpdateAdminConfig } from '../../shared/api-schema';
+import {
+  GUARDRAIL_CATALOG,
+  GUARDRAIL_KEYS,
+  type GuardrailKey,
+} from '../../shared/guardrail-catalog';
 import { MODEL_CATALOG, MODEL_KEYS, type ModelKey } from '../../shared/model-catalog';
 import { Dialog } from './Dialog';
 import { PromptEditor } from './PromptEditor';
@@ -33,6 +38,7 @@ function AdminSettingsForm({ config, onClose, onSave }: {
   const [prompt, setPrompt] = useState(config.defaultSystemPrompt);
   const [enabled, setEnabled] = useState<ModelKey[]>(config.enabledModelKeys);
   const [defaultModel, setDefaultModel] = useState<ModelKey>(config.defaultModelKey);
+  const [requiredGuardrailKey, setRequiredGuardrailKey] = useState<GuardrailKey>(config.requiredGuardrailKey);
   const [saving, setSaving] = useState(false);
 
   function toggleModel(key: ModelKey) {
@@ -53,6 +59,7 @@ function AdminSettingsForm({ config, onClose, onSave }: {
         defaultModelKey: defaultModel,
         enabledModelKeys: enabled,
         defaultSystemPrompt: prompt,
+        requiredGuardrailKey,
       });
     } finally {
       setSaving(false);
@@ -83,6 +90,19 @@ function AdminSettingsForm({ config, onClose, onSave }: {
         value={prompt}
         onChange={setPrompt}
       />
+      <label className="field-block">
+        <span>必須Guardrail</span>
+        <select
+          aria-label="必須Guardrail"
+          value={requiredGuardrailKey}
+          onChange={(event) => setRequiredGuardrailKey(event.target.value as GuardrailKey)}
+        >
+          {GUARDRAIL_KEYS.map((key) => (
+            <option key={key} value={key}>{GUARDRAIL_CATALOG[key].label}</option>
+          ))}
+        </select>
+      </label>
+      <p className="setting-hint">{GUARDRAIL_CATALOG[requiredGuardrailKey].description}</p>
       <div className="dialog-actions">
         <button type="button" className="secondary-button" onClick={onClose}>キャンセル</button>
         <button type="button" className="primary-button" disabled={saving} onClick={save}>

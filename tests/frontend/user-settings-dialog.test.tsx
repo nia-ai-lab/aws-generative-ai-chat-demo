@@ -9,6 +9,8 @@ describe('UserSettingsDialog', () => {
         open
         value=""
         generationConfig={{ temperature: 0.3, topP: null, maxOutputTokens: 1_024 }}
+        guardrailKey="none"
+        requiredGuardrailKey="content-safety"
         onClose={() => undefined}
         onSave={() => undefined}
       />,
@@ -21,5 +23,9 @@ describe('UserSettingsDialog', () => {
     expect(html).toContain('value="1024"');
     expect(html).toContain('デフォルトに戻す');
     expect(html).toContain('reset-button');
+    expect(html).toContain('Guardrail');
+    expect(html).toContain('禁止トピック: 旅行');
+    expect(html).toContain('禁止ワード: パイナップル');
+    expect(html).toContain('管理者必須: コンテンツ保護');
   });
 });

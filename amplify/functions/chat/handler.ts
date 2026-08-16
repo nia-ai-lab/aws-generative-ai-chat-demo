@@ -5,6 +5,7 @@ import { expandPromptVariables } from '../../../shared/prompt-variables.js';
 import { bearerToken, getAuthContext } from '../shared/auth.js';
 import { readConfig } from '../shared/config.js';
 import { corsHeaders } from '../shared/http.js';
+import { resolveGuardrail } from '../shared/guardrails.js';
 import { actorId, runtimeSessionId } from '../shared/session-isolation.js';
 
 interface LambdaResponseStream {
@@ -78,6 +79,9 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
   let temperature: number | undefined;
   let topP: number | null | undefined;
   let maxOutputTokens: number | undefined;
+  let requiredGuardrailKey = 'none';
+  let participantGuardrailKey = 'none';
+  let effectiveGuardrailKey = 'none';
   let activeStream: LambdaResponseStream | undefined;
 
   try {
@@ -90,6 +94,10 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
     selectedModel = input.modelKey;
     ({ temperature, topP, maxOutputTokens } = input.generationConfig);
     userMessage = input.message;
+    requiredGuardrailKey = config.requiredGuardrailKey;
+    participantGuardrailKey = input.guardrailKey;
+    const guardrail = resolveGuardrail(config.requiredGuardrailKey, input.guardrailKey);
+    effectiveGuardrailKey = guardrail.effectiveGuardrailKey;
     auditActorId = actorId(auth.sub, input.browserSessionId);
     const isolatedRuntimeSessionId = runtimeSessionId(auditActorId, input.conversationSessionId);
     const promptContext = { now: new Date(), timeZone: input.timeZone };
@@ -121,6 +129,8 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
         adminSystemPrompt: expandPromptVariables(config.defaultSystemPrompt, promptContext),
         userSystemPrompt: expandPromptVariables(input.userSystemPrompt, promptContext),
         generationConfig: input.generationConfig,
+        guardrailId: guardrail.guardrailId,
+        guardrailVersion: guardrail.guardrailVersion,
       }),
       signal: AbortSignal.timeout(85_000),
     });
@@ -166,6 +176,9 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       temperature,
       topP,
       maxOutputTokens,
+      requiredGuardrailKey,
+      participantGuardrailKey,
+      effectiveGuardrailKey,
       latencyMs: Date.now() - startedAt,
       result: 'SUCCESS',
     }));
@@ -197,6 +210,9 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       temperature,
       topP,
       maxOutputTokens,
+      requiredGuardrailKey,
+      participantGuardrailKey,
+      effectiveGuardrailKey,
       latencyMs: Date.now() - startedAt,
       result: code,
       errorType: error instanceof Error ? error.name : 'UnknownError',

@@ -1,6 +1,6 @@
 """Validated AgentCore invocation payloads."""
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class GenerationConfig(BaseModel):
@@ -24,3 +24,11 @@ class ChatInvocation(BaseModel):
     adminSystemPrompt: str = Field(max_length=8_000)
     userSystemPrompt: str = Field(max_length=4_000)
     generationConfig: GenerationConfig
+    guardrailId: str = Field(default="", max_length=64)
+    guardrailVersion: str = Field(default="", max_length=16)
+
+    @model_validator(mode="after")
+    def validate_guardrail_pair(self) -> "ChatInvocation":
+        if bool(self.guardrailId) != bool(self.guardrailVersion):
+            raise ValueError("guardrailId and guardrailVersion must be supplied together")
+        return self

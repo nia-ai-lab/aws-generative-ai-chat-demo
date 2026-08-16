@@ -88,10 +88,11 @@ flowchart LR
 | `browserSessionId` | `sessionStorage` | タブを閉じるまで |
 | `conversationSessionId` | `sessionStorage` | クリアまたはタブを閉じるまで |
 | 利用者プロンプト | `sessionStorage` | ログアウトまたはタブを閉じるまで |
+| 受講者 Guardrail | `sessionStorage` | ログアウトまたはタブを閉じるまで |
 | 画面上の会話 | React メモリ | リロード、クリア、ログアウトまで |
 | 管理者設定 | 永続保存しない。API から再取得 | 画面表示中のみ |
 
-利用者設定はデータベースへの保存禁止をセキュリティ境界とはしない。重要なのは、共有 Cognito ユーザーだけをキーにせず、アプリが発行・検証する `browserSessionId` を分離キーへ必ず含めることである。現行実装は再読み込みや Runtime の再作成にも強い `sessionStorage` を正本とし、利用者プロンプトを各チャット要求の LangGraph Runtime Context として渡す。将来 AgentCore Runtime または AgentCore Memory に保持する場合も、この分離キー設計を維持する。
+利用者設定はデータベースへの保存禁止をセキュリティ境界とはしない。重要なのは、共有 Cognito ユーザーだけをキーにせず、アプリが発行・検証する `browserSessionId` を分離キーへ必ず含めることである。現行実装は再読み込みや Runtime の再作成にも強い `sessionStorage` を正本とし、利用者プロンプト、推論設定、受講者 Guardrail を各チャット要求で渡す。将来 AgentCore Runtime または AgentCore Memory に保持する場合も、この分離キー設計を維持する。
 
 ### 3.2 Cognito
 
@@ -133,12 +134,13 @@ TypeScript / Node.js 22 で実装し、次を担当する。
 
 1. API Gateway の Lambda authorizer context を検証する。
 2. リクエスト本文をスキーマ検証する。
-3. DynamoDB から現在の管理設定を取得する。
+3. DynamoDB から現在の管理設定と必須 Guardrail を取得する。
 4. 選択モデルが有効モデルに含まれることを検証する。
-5. `actorId` を導出する。
-6. Cognito JWT を AgentCore Runtime に転送する。
-7. AgentCore の応答ストリームを SSE に正規化してブラウザへ転送する。
-8. リクエスト結果とレイテンシーを構造化ログに記録する。
+5. 管理者必須 Guardrail と受講者 Guardrail から実効 Guardrail を解決する。
+6. `actorId` を導出する。
+7. Cognito JWT を AgentCore Runtime に転送する。
+8. AgentCore の応答ストリームを SSE に正規化してブラウザへ転送する。
+9. リクエスト結果、レイテンシー、実効 Guardrail を構造化ログに記録する。
 
 Lambda は `awslambda.streamifyResponse` を使用する。AgentCore Runtime への接続には JWT 認証付き HTTPS を使う。OAuth/JWT 経路では AgentCore の AWS SDK invocation ではなく Runtime HTTPS エンドポイントを利用する。
 
@@ -146,7 +148,7 @@ Lambda は `awslambda.streamifyResponse` を使用する。AgentCore Runtime へ
 
 TypeScript で実装する。読み取りと管理更新は関数またはハンドラーを分け、最小権限を付与する。
 
-- 一般設定取得: クライアントに必要な表示名、モデルキー、既定モデルだけを返す。管理者プロンプト本文は一般 API から返さない。
+- 一般設定取得: クライアントに必要な表示名、モデルキー、既定モデル、必須 Guardrail の論理キーだけを返す。管理者プロンプト本文や Guardrail ID は返さない。
 - 管理設定取得・更新: `Admins` グループを必須とし、完全な設定を扱う。
 - 更新は DynamoDB の `configVersion` 条件式を使う。
 - 更新成功後に `configVersion` を 1 増加させる。
@@ -176,13 +178,14 @@ TypeScript で実装する。読み取りと管理更新は関数またはハン
     "nova-2-lite",
     "nova-pro"
   ],
-  "defaultSystemPrompt": "あなたは安全で誠実なトレーニング用AIアシスタントです。",
+  "defaultSystemPrompt": "",
+  "requiredGuardrailKey": "none",
   "updatedAt": "2026-08-16T00:00:00Z",
   "updatedBy": "cognito-sub"
 }
 ```
 
-モデルの実 ID、表示名、IAM 対象 ARN はコード側の固定カタログで管理する。DynamoDB には安全な論理キーのみ保存する。
+モデルと Guardrail の実 ID、表示名、IAM 対象 ARN はコード側の固定カタログで管理する。DynamoDB には安全な論理キーのみ保存する。
 
 ### 3.7 AgentCore Runtime
 
@@ -281,6 +284,25 @@ AgentCore Runtime は `runtimeSessionId` ごとに専用 microVM を割り当て
 
 受講者は設定ダイアログから上記3項目を変更できる。設定はブラウザタブの `sessionStorage` に保存し、共有CognitoユーザーやDynamoDBをキーとした全体設定にはしない。SPA、Chat Lambda、Agentの3層で値を検証し、Chat Lambdaの監査ログには実際に使用した値を記録する。Top Pが未指定の場合、Agentは`top_p`をBedrock Converseへ渡さず、モデル既定値を使用する。最大アウトプットトークンは未指定にせず常に明示し、トークンクォータの過剰予約を避ける。
 
+### 3.11 Bedrock Guardrails
+
+受講者と管理者は、次の論理プリセットから一つを選択する。初期値は双方とも `none` とし、アプリ標準ではGuardrailを自動適用しない。
+
+| 論理キー | 表示名 | 主な設定 |
+|---|---|---|
+| `none` | なし | Guardrailを送信しない |
+| `content-safety` | コンテンツ保護 | Hate、Insults、Sexual、Violence、MisconductをMediumで評価 |
+| `prompt-attack` | プロンプト攻撃対策 | Prompt AttackをHighで入力評価 |
+| `sensitive-information` | 個人情報の匿名化 | EMAIL、PHONEを入力・出力でANONYMIZE |
+| `denied-topic-travel` | 禁止トピック: 旅行 | 旅行、観光、宿泊、旅程を拒否 |
+| `blocked-word-pineapple` | 禁止ワード: パイナップル | 完全一致の単語・語句フィルター |
+
+Converse/ConverseStreamの `guardrailConfig` は一つのGuardrail IDを指定するため、CDKは5個の単独プリセットと10個の二者組み合わせ、合計15個のGuardrailを作成する。Chat Lambdaは管理者キーと受講者キーをカタログ順に正規化し、対応するIDと番号付きバージョンをAgentへ渡す。クライアント指定のIDやバージョンは受け付けない。
+
+日本語評価のためコンテンツフィルター、Prompt Attack、Denied TopicsはStandard tierを使用し、`apac.guardrail.v1:0`でクロスリージョン評価する。モデル呼び出しには `trace=disabled` と同期ストリーム評価を指定する。`guardContent`による部分評価や単独の`ApplyGuardrail` APIではなく、会話全体を保護する `guardrailConfig` を使用する。
+
+PII匿名化後も、Chat Lambdaの監査ログには受講者の原入力が保存される。教材では架空のメールアドレスと電話番号だけを使用し、ログはKMS暗号化、最小権限、7日保持を維持する。
+
 ## 4. セッション設計
 
 ### 4.1 ID 一覧
@@ -313,13 +335,13 @@ sequenceDiagram
     G->>G: JWT検証
     G->>L: 認可済みリクエスト
     L->>D: 現在の管理設定を取得
-    D-->>L: モデル許可リスト・既定プロンプト
-    L->>L: ロール・モデル・ID・長さを検証
+    D-->>L: モデル許可リスト・既定プロンプト・必須Guardrail
+    L->>L: ロール・モデル・ID・長さ・実効Guardrailを検証
     L->>A: HTTPS stream + 同じ Bearer JWT
     A->>A: Custom JWT Authorizerで再検証
     A->>M: thread_id / actor_id の状態を読取
     M-->>A: 同一会話のチェックポイント
-    A->>F: Guardrail付きモデル呼出
+    A->>F: 必要な場合だけGuardrail付きモデル呼出
     F-->>A: 応答ストリーム
     A->>M: 新しいチェックポイントを保存
     A-->>L: 応答ストリーム
@@ -331,7 +353,7 @@ sequenceDiagram
 
 1. 送信中ならストリームをキャンセルする。
 2. 画面上のメッセージを削除する。
-3. 利用者プロンプトは現在のブラウザセッション設定として維持する。別ブラウザセッションには引き継がない。
+3. 利用者プロンプト、推論設定、受講者 Guardrail は現在のブラウザセッション設定として維持する。別ブラウザセッションには引き継がない。
 4. 新しい `conversationSessionId` を生成する。
 5. 古い ID は再利用しない。
 6. CloudWatch の監査ログは削除しない。
@@ -341,14 +363,14 @@ sequenceDiagram
 ### 5.1 優先順位
 
 ```text
-1. Bedrock Guardrails（システムプロンプトとは独立して適用）
+1. 設定されている場合の Bedrock Guardrails（システムプロンプトとは独立して適用）
 2. 管理者が編集するアプリ既定プロンプト
 3. 受講者が設定する人格・口調プロンプト
 4. AgentCore Memory から復元した会話履歴
 5. 現在のユーザーメッセージ
 ```
 
-コード固定のシステムプロンプトは設けない。アプリとして必要な役割、制約、安全上の指示は、管理者が編集する「アプリ既定プロンプト」で指定する。Bedrock Guardrails とモデル組み込みの安全機能は、これとは独立して適用する。
+コード固定のシステムプロンプトは設けない。アプリとして必要な役割、制約、安全上の指示は、管理者が編集する「アプリ既定プロンプト」で指定する。選択された Bedrock Guardrails とモデル組み込みの安全機能は、これとは独立して適用する。
 
 アプリ既定プロンプトの初期値は空文字列とし、管理者は空のまま保存できる。アプリ既定プロンプトと受講者のシステムプロンプトがともに空の場合、Agent は Bedrock へ system メッセージを送信しない。
 
@@ -393,11 +415,12 @@ sequenceDiagram
     {"key": "claude-sonnet-5", "label": "Claude Sonnet 5"},
     {"key": "nova-2-lite", "label": "Nova 2 Lite"},
     {"key": "nova-pro", "label": "Nova Pro"}
-  ]
+  ],
+  "requiredGuardrailKey": "none"
 }
 ```
 
-一般利用者には管理者プロンプト本文や実モデル ID を返さない。
+一般利用者には管理者プロンプト本文、実モデル ID、Guardrail IDとバージョンを返さない。
 
 ### 6.2 `POST /chat`
 
@@ -411,6 +434,7 @@ sequenceDiagram
   "modelKey": "claude-sonnet-5",
   "message": "生成AIとは何ですか？",
   "userSystemPrompt": "親しみやすい先生として説明してください。現在日時は $DATETIME です。",
+  "guardrailKey": "denied-topic-travel",
   "timeZone": "Asia/Tokyo",
   "generationConfig": {
     "temperature": 0.3,
@@ -437,7 +461,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
 
 ### 6.3 `GET /admin/config`
 
-管理者にだけ、`configVersion`、有効モデル、既定モデル、アプリ既定プロンプト、更新日時、更新者を返す。Lambda は `cognito:groups` に `Admins` が含まれることを必ず検証する。
+管理者にだけ、`configVersion`、有効モデル、既定モデル、アプリ既定プロンプト、必須Guardrail論理キー、更新日時、更新者を返す。Lambda は `cognito:groups` に `Admins` が含まれることを必ず検証する。
 
 ### 6.4 `PUT /admin/config`
 
@@ -448,7 +472,8 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
   "expectedConfigVersion": 4,
   "defaultModelKey": "nova-2-lite",
   "enabledModelKeys": ["claude-sonnet-5", "nova-2-lite"],
-  "defaultSystemPrompt": ""
+  "defaultSystemPrompt": "",
+  "requiredGuardrailKey": "content-safety"
 }
 ```
 
@@ -494,6 +519,8 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
 - Temperature（初期値0.3）
 - Top P（初期状態はモデル既定）
 - 最大アウトプットトークン（初期値1,024）
+- Guardrail（初期値なし。事前定義プリセットから選択）
+- 管理者必須 Guardrail がある場合は解除不能であることを表示
 - デフォルトに戻す（Temperature、Top P、最大アウトプットトークンを初期値へ戻し、ペルソナは維持。「適用」で確定）
 - 適用
 - キャンセル
@@ -504,6 +531,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
 - `$DATETIME` / `$TIMEZONE` 挿入ボタン
 - 有効モデル
 - 既定モデル
+- 必須 Guardrail（初期値なし）
 - 保存
 - キャンセル
 
@@ -537,6 +565,7 @@ IME 変換中は `preventDefault()` も送信処理も実行しない。送信�
 | 設定取得 | 可 | 可 | API Gateway + Lambda |
 | チャット | 可 | 可 | API Gateway + Lambda + AgentCore |
 | 利用者プロンプト設定 | 可 | 可 | 現行はブラウザ。将来バックエンド保持時も browser session 単位で分離 |
+| 受講者 Guardrail 選択 | 可 | 可 | ブラウザ保存、Chat Lambdaで論理キーを検証 |
 | 管理設定取得 | 不可 | 可 | Lambda `cognito:groups` |
 | 管理設定更新 | 不可 | 可 | Lambda `cognito:groups` |
 | CloudWatch Logs 閲覧 | 不可 | AWS 管理者のみ | IAM |
@@ -563,7 +592,7 @@ IME 変換中は `preventDefault()` も送信処理も実行しない。送信�
 ### 9.3 AgentCore Runtime execution role
 
 - 対象推論プロファイルと基盤モデルへの `bedrock:InvokeModel`、`bedrock:InvokeModelWithResponseStream`
-- 対象 Guardrail の適用
+- 対象 Guardrail とAPAC Guardrailプロファイルへの `bedrock:ApplyGuardrail`
 - 対象 AgentCore Memory の event/checkpoint 操作
 - AgentCore Observability と専用ロググループへの出力
 - 他の DynamoDB、S3、Lambda、Secrets Manager へのアクセスは付与しない
@@ -634,11 +663,11 @@ IME 変換中は `preventDefault()` も送信処理も実行しない。送信�
 
 ### 11.2 Guardrail 初期方針
 
-- 有害コンテンツフィルター
-- プロンプト攻撃・ジェイルブレイクへの入力保護
-- 認証情報、アクセスキー、パスワードの要求・出力抑止
-- 内部システムプロンプトの抽出要求への拒否
-- 必要に応じて PII 検出を追加する
+- デフォルトは適用なしとし、受講者が機能差を比較できるようにする
+- 受講者は事前定義プリセットをブラウザセッション単位で選択する
+- 管理者はDynamoDBに必須プリセットを保存し、受講者は解除できない
+- IDと番号付きバージョンはサーバー側カタログからだけ解決する
+- PIIデモには実在しない情報だけを使用する
 
 Guardrail による PII マスキングは CloudWatch に書き込む前の原文を自動的に消去する保証ではないため、ログの保護を別途必須とする。
 
@@ -773,8 +802,8 @@ Amplify Gen 2 は TypeScript の CDK custom resources をバックエンドと�
 
 - 同一 `thread_id` で会話文脈を保持する。
 - 異なる `thread_id` または `actor_id` で文脈が混ざらない。
-- 利用者プロンプトが上位安全指示を上書きしない。
-- Guardrail の許可・拒否経路。
+- 管理者プロンプトと利用者ペルソナの優先順位。
+- Guardrailなし、各単独プリセット、管理者・受講者の組み合わせの許可・拒否経路。
 - 3 モデルで同じ入出力契約を満たす。
 - `maxTokens` がすべてのモデル呼び出しで明示される。
 - ログに JWT が含まれない。
@@ -795,7 +824,7 @@ Amplify Gen 2 は TypeScript の CDK custom resources をバックエンドと�
 2. Amplify の対象 branch をデプロイする。
 3. Cognito の受講者共有ユーザーと管理者ユーザーを作成・確認する。
 4. 3 モデルのアクセスと推論プロファイルを確認する。
-5. 管理画面で既定プロンプトと有効モデルを確認する。
+5. 管理画面で既定プロンプト、有効モデル、必須 Guardrail が「なし」であることを確認する。
 6. 2 ブラウザで会話分離テストを行う。
 7. CloudWatch Logs への監査記録を確認する。
 
@@ -821,7 +850,7 @@ Amplify Gen 2 は TypeScript の CDK custom resources をバックエンドと�
 - CloudWatch Logs の保持期間は 7 日とする。
 - Claude Sonnet 5、Nova 2 Lite、Nova Pro はクロスリージョン推論プロファイルを使用する。
 
-実装開始前に残る確認事項は、既定選択モデル、カスタムドメインの要否、Guardrail の拒否トピックとフィルター強度である。暫定値は要件定義書の Q-04〜Q-06 に従う。
+Guardrailの教材プリセット、拒否トピック、禁止ワード、フィルター強度は確定済みである。既定選択モデルとカスタムドメインは要件定義書の Q-04〜Q-05 に従う。
 
 ## 17. 参照資料
 

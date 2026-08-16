@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
 
 from langchain_aws import ChatBedrockConverse
-from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, MessagesState, StateGraph
@@ -65,6 +65,16 @@ class ChatContext:
     max_output_tokens: int
 
 
+def messages_for_model(
+    system_prompt: str,
+    messages: Sequence[BaseMessage],
+) -> list[BaseMessage]:
+    """Prepend a system message only when an explicit system prompt exists."""
+    if not system_prompt:
+        return list(messages)
+    return [SystemMessage(system_prompt), *messages]
+
+
 async def call_model(
     state: MessagesState,
     runtime: Runtime[ChatContext],
@@ -79,7 +89,7 @@ async def call_model(
         context.temperature,
         context.top_p,
         context.max_output_tokens,
-    ).ainvoke([SystemMessage(system_prompt), *state["messages"]])
+    ).ainvoke(messages_for_model(system_prompt, state["messages"]))
     return {"messages": [response]}
 
 
@@ -88,11 +98,7 @@ def build_graph() -> Any:
     builder.add_node("model", call_model)
     builder.add_edge(START, "model")
     builder.add_edge("model", END)
-    checkpointer = (
-        AgentCoreMemorySaver(MEMORY_ID, region_name=REGION)
-        if MEMORY_ID
-        else InMemorySaver()
-    )
+    checkpointer = AgentCoreMemorySaver(MEMORY_ID, region_name=REGION) if MEMORY_ID else InMemorySaver()
     return builder.compile(checkpointer=checkpointer)
 
 

@@ -254,7 +254,6 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
 .guardrail-check-row span { display: grid; gap: 2px; }
 .guardrail-check-row strong { font-size: 13px; }
 .guardrail-check-row small { color: var(--muted); font-size: 11px; line-height: 1.4; }
-.guardrail-none { margin: 2px 0 0; }
 .prompt-variable-tools { display: flex; flex-wrap: wrap; gap: 7px; margin-top: -1px; }
 .prompt-variable-tools button {
   min-height: 30px;

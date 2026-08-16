@@ -89,7 +89,6 @@ export function UserSettingsDialog({
             </span>
           </label>
         ))}
-        {selectedGuardrailKeys.length === 0 && <p className="setting-hint guardrail-none">選択なし</p>}
       </fieldset>
       {requiredGuardrailKeys.length > 0 && (
         <p className="required-setting">

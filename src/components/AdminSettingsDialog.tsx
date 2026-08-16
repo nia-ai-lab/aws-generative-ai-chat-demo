@@ -111,7 +111,6 @@ function AdminSettingsForm({ config, onClose, onSave }: {
             </span>
           </label>
         ))}
-        {requiredGuardrailKeys.length === 0 && <p className="setting-hint guardrail-none">選択なし</p>}
       </fieldset>
       <div className="dialog-actions">
         <button type="button" className="secondary-button" onClick={onClose}>キャンセル</button>

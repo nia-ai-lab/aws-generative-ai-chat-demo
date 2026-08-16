@@ -3,7 +3,7 @@
 ## 1. 前提
 
 - AWS CLI v2 と `aws login` が利用できること
-- Node.js 22.13以上22系、npm 10.8.2、Python 3.12、zip、GitHub CLI が利用できること
+- Node.js 22.18.0、npm 10.8.2、Python 3.12、zip、GitHub CLI が利用できること
 - デプロイ先は `ap-northeast-1` であること
 - GitHub リポジトリを Amplify Hosting に接続できる権限があること
 - AgentCore、Bedrock、Cognito、API Gateway、Lambda、DynamoDB、KMS、CloudWatch、IAM を作成できるデプロイロールがあること
@@ -14,7 +14,7 @@
 
 1. Amplifyコンソールを東京リージョンで開き、「新しいアプリ」を作成する。
 2. GitHubの公開リポジトリ `nia-ai-lab/aws-generative-ai-chat-demo` と `main` ブランチを接続する。
-3. ビルドイメージでNode.js 22とPython 3.12を利用する。
+3. ビルドイメージでNode.js 22.18.0とPython 3.12を利用する。
 4. Amplifyの環境変数に、リポジトリ外で管理する次の値を登録する。
 
 | 変数 | 値 |
@@ -24,11 +24,15 @@
 `AWS_REGION` はAmplifyのビルド環境から自動供給される。Amplifyアプリ自体を必ず東京リージョンに作成する。
 
 `amplify.yml` がAgentのARM64 ZIP作成、検査、Amplify Gen 2バックエンド、SPAの順にデプロイする。生成される `amplify_outputs.json` はコミットしない。
-ビルドではNode.js 22系とnpm 10.8.2を明示し、同じツールチェーンで検証したlockfileを`npm ci`で使用する。
+ビルドでは`.nvmrc`と`amplify.yml`によりNode.js 22.18.0、npm 10.8.2を固定し、同じツールチェーンで生成・検証したlockfileを`npm ci`で使用する。`.npmrc`の`engine-strict`と`npm run verify:toolchain`により、異なるNode.js/npmでの依存更新を早期に拒否する。
 
 ## 3. ローカル検証
 
 ```bash
+nvm install
+nvm use
+npm install --global npm@10.8.2
+npm run verify:toolchain
 npm ci
 npm run package:agent
 npm run check

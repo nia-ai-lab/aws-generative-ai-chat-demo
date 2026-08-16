@@ -34,7 +34,16 @@
 
 ## Local checks
 
+Node.jsとnpmはlockfileの再現性を保つため固定している。nvmを利用する場合は先に次を実行する。
+
 ```bash
+nvm install
+nvm use
+npm install --global npm@10.8.2
+```
+
+```bash
+npm run verify:toolchain
 npm ci
 npm run package:agent
 npm run check

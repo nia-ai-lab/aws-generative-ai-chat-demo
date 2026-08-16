@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "typecheck": "tsc -b",
+    "verify:toolchain": "node scripts/verify-toolchain.mjs",
     "prepare:outputs": "node scripts/ensure-amplify-outputs.mjs",
     "package:agent": "bash scripts/package-agent.sh",
     "check": "npm run prepare:outputs && npm run lint && npm run test && npm run build",
@@ -52,7 +53,7 @@
     "vitest": "3.2.7"
   },
   "engines": {
-    "node": ">=22.13 <23",
+    "node": "22.18.x",
     "npm": "10.8.2"
   }
 }

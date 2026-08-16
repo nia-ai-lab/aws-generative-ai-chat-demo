@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { LogOut, Send, Settings, Shield, Trash2 } from 'lucide-react';
 import type { AdminConfig, PublicConfig, UpdateAdminConfig } from '../../shared/api-schema';
 import { MODEL_CATALOG, type ModelKey } from '../../shared/model-catalog';
@@ -14,6 +14,8 @@ import {
 } from '../lib/session';
 import { AdminSettingsDialog } from './AdminSettingsDialog';
 import { UserSettingsDialog } from './UserSettingsDialog';
+
+const MarkdownMessage = lazy(() => import('./MarkdownMessage'));
 
 interface Message {
   id: string;
@@ -217,7 +219,15 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
         {messages.map((message) => (
           <article key={message.id} className={`message ${message.role} ${message.error ? 'error' : ''}`}>
             <div className="message-label">{message.role === 'user' ? 'YOU' : 'AI'}</div>
-            <div className={message.pending ? 'thinking' : ''}>{message.text}</div>
+            <div className={message.pending ? 'thinking' : ''}>
+              {message.pending || message.role === 'user' || message.error
+                ? message.text
+                : (
+                  <Suspense fallback={message.text}>
+                    <MarkdownMessage content={message.text} />
+                  </Suspense>
+                )}
+            </div>
           </article>
         ))}
         <div ref={endRef} />

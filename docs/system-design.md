@@ -468,7 +468,8 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
 
 - ヘッダー: タイトル、モデル選択、設定、管理設定（管理者のみ）、ログアウト。アイコンはホバーまたはフォーカス時に操作名を表示する
 - メッセージ領域: 利用者と AI の発言
-- 応答待ち表示: `AI Thinking...`
+- 応答待ち表示: `AI Thinking...`。最初のSSE `delta`受信時に消去し、以降は応答を逐次表示する
+- AI応答表示: GitHub Flavored Markdown。生HTMLは解釈せず、外部リンクは別タブで安全に開く
 - 入力領域: 自動拡張 textarea、送信ボタン、クリアボタン
 
 #### 利用者設定ダイアログ

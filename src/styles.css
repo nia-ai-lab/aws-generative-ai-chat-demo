@@ -168,6 +168,34 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
 .thinking::after { content: ''; display: inline-block; width: 1em; animation: dots 1.2s steps(4, end) infinite; }
 @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75%, 100% { content: '...'; } }
 
+.markdown-message { white-space: normal; }
+.markdown-message > :first-child { margin-top: 0; }
+.markdown-message > :last-child { margin-bottom: 0; }
+.markdown-message p { margin: 0 0 12px; }
+.markdown-message h1,
+.markdown-message h2,
+.markdown-message h3,
+.markdown-message h4 { margin: 22px 0 10px; color: #171817; line-height: 1.3; letter-spacing: -.02em; }
+.markdown-message h1 { font-size: 1.45em; }
+.markdown-message h2 { font-size: 1.28em; }
+.markdown-message h3 { font-size: 1.12em; }
+.markdown-message h4 { font-size: 1em; }
+.markdown-message ul,
+.markdown-message ol { margin: 0 0 12px; padding-left: 24px; }
+.markdown-message li { margin: 4px 0; }
+.markdown-message li > p { margin: 0; }
+.markdown-message blockquote { margin: 14px 0; padding: 2px 0 2px 14px; border-left: 3px solid #bec7df; color: #555752; }
+.markdown-message code { padding: .14em .38em; border-radius: 5px; background: #eceeea; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .9em; }
+.markdown-message pre { max-width: 100%; margin: 14px 0; padding: 14px 16px; overflow-x: auto; border: 1px solid #dedfd9; border-radius: 11px; background: #f0f1ee; line-height: 1.55; }
+.markdown-message pre code { padding: 0; background: transparent; font-size: 13px; white-space: pre; }
+.markdown-message a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.markdown-message hr { margin: 20px 0; border: 0; border-top: 1px solid var(--line); }
+.markdown-message table { display: block; max-width: 100%; margin: 14px 0; overflow-x: auto; border-spacing: 0; border-collapse: collapse; }
+.markdown-message th,
+.markdown-message td { padding: 8px 10px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+.markdown-message th { background: var(--surface-soft); font-weight: 700; }
+.markdown-message input[type='checkbox'] { width: 15px; height: 15px; margin: 0 5px 0 0; vertical-align: -2px; }
+
 .composer-wrap {
   padding: 12px max(20px, calc((100vw - 820px) / 2)) calc(16px + env(safe-area-inset-bottom));
   background: linear-gradient(transparent, #f7f7f5 15%);

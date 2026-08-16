@@ -92,7 +92,6 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
 .primary-button:hover:not(:disabled) { background: var(--accent-hover); }
 .secondary-button { color: #333; background: var(--surface-soft); }
 .login-button { width: 100%; margin-top: 10px; }
-.audit-note { margin: 20px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
 .form-error { color: var(--danger); font-size: 13px; line-height: 1.45; }
 .muted { color: var(--muted); }
 
@@ -114,6 +113,7 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
 .header-actions { justify-content: flex-end; }
 .model-select { max-width: 190px; background-color: var(--surface); }
 .icon-button {
+  position: relative;
   width: 40px;
   height: 40px;
   padding: 0;
@@ -125,6 +125,31 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
   background: transparent;
 }
 .icon-button:hover { color: #161615; background: #eaeae6; }
+.icon-button[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 10;
+  padding: 5px 8px;
+  border-radius: 7px;
+  color: #fff;
+  background: #242522;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, .18);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-3px);
+  transition: opacity .12s, transform .12s;
+}
+.icon-button[data-tooltip]:hover::after,
+.icon-button[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
 
 .message-list {
   width: 100%;
@@ -159,7 +184,17 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
   box-shadow: 0 10px 35px rgba(31, 32, 35, .08);
 }
 .composer:focus-within { border-color: #99ace4; box-shadow: 0 10px 35px rgba(31, 32, 35, .08), 0 0 0 3px rgba(40, 87, 217, .08); }
-.composer textarea { min-height: 38px; max-height: 150px; padding: 8px 0; border: 0; border-radius: 0; resize: none; box-shadow: none; background: transparent; }
+.composer textarea {
+  min-height: 38px;
+  max-height: calc(3 * 1.55em + 16px);
+  padding: 8px 0;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 0;
+  resize: none;
+  box-shadow: none;
+  background: transparent;
+}
 .composer textarea:focus { box-shadow: none; }
 .send-button {
   width: 40px;

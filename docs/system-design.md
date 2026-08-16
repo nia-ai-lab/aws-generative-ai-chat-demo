@@ -194,7 +194,7 @@ TypeScript で実装する。読み取りと管理更新は関数またはハン
 | 配備 | ZIP Direct Code Deployment |
 | エントリーポイント | `agent/main.py` |
 | 認証 | Custom JWT Authorizer |
-| セッション | `runtimeSessionId = conversationSessionId` |
+| セッション | `runtimeSessionId = SHA-256(actorId + ':' + conversationSessionId)` |
 | ネットワーク | 初期は PUBLIC。外部公開は AgentCore authorizer で保護する |
 | 実行ロール | Bedrock、Guardrails、AgentCore Memory、CloudWatch の必要最小限 |
 
@@ -243,7 +243,7 @@ flowchart LR
 ### 3.9 AgentCore Memory
 
 - `AgentCoreMemorySaver` を LangGraph checkpointer として使用する。
-- `thread_id` に `conversationSessionId` を設定する。
+- `thread_id` には Chat Lambda が導出した `runtimeSessionId` を設定し、Runtime の実行分離単位と Memory の会話単位を一致させる。
 - `actor_id` に `SHA-256(cognitoSub + ':' + browserSessionId)` を設定する。
 - 長期メモリ用 `AgentCoreMemoryStore` は使用しない。
 - Semantic、User Preference、Summarization、Episodic の長期戦略は設定しない。
@@ -286,11 +286,12 @@ AgentCore Runtime は `runtimeSessionId` ごとに専用 microVM を割り当て
 |---|---|---|---|
 | Cognito `sub` | Cognito | ユーザー | 認証主体。共有受講者では全員同一 |
 | `browserSessionId` | SPA の UUID v4 | ブラウザタブ | 同一共有ユーザー内の受講者分離 |
-| `conversationSessionId` | SPA の UUID v4 | クリアまで | AgentCore Runtime/Memory の会話分離 |
+| `conversationSessionId` | SPA の UUID v4 | クリアまで | 会話の論理ID、Runtime/Memory分離キーの入力 |
+| `runtimeSessionId` | Chat Lambda | クリアまで | AgentCore Runtime と Memory の共通会話分離ID |
 | `actorId` | Chat Lambda | ブラウザタブ | Memory の actor 分離 |
 | `requestId` | SPA または API | 1 メッセージ | 重複防止、ログ相関 |
 
-UUID v4 は 36 文字であり、AgentCore Runtime のセッション ID 最小長を満たす。
+`runtimeSessionId` は 64 文字の SHA-256 hex 値とし、AgentCore Runtime のセッション ID 長要件を満たす。
 
 ### 4.2 チャットシーケンス
 
@@ -462,11 +463,10 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
 - ユーザー名
 - パスワード
 - ログインボタン
-- 「会話は監査のため記録されます。」の一文
 
 #### チャット画面
 
-- ヘッダー: タイトル、モデル選択、設定、管理設定（管理者のみ）、ログアウト
+- ヘッダー: タイトル、モデル選択、設定、管理設定（管理者のみ）、ログアウト。アイコンはホバーまたはフォーカス時に操作名を表示する
 - メッセージ領域: 利用者と AI の発言
 - 応答待ち表示: `AI Thinking...`
 - 入力領域: 自動拡張 textarea、送信ボタン、クリアボタン

@@ -26,10 +26,11 @@ async def invoke(payload: dict[str, Any]) -> AsyncIterator[dict[str, Any]]:
         return
 
     logger.info(
-        "Agent invocation started requestId=%s modelKey=%s conversationSessionId=%s",
+        "Agent invocation started requestId=%s modelKey=%s conversationSessionId=%s runtimeSessionId=%s",
         invocation.requestId,
         invocation.modelKey,
         invocation.conversationSessionId,
+        invocation.runtimeSessionId,
     )
     try:
         async for event in stream_chat(invocation):

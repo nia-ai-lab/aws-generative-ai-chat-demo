@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { LogOut, Send, Settings, Shield, Trash2 } from 'lucide-react';
 import type { AdminConfig, PublicConfig, UpdateAdminConfig } from '../../shared/api-schema';
 import { MODEL_CATALOG, type ModelKey } from '../../shared/model-catalog';
@@ -48,6 +48,13 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useLayoutEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [input]);
 
   const selectedModelKey = config.models.some((model) => model.key === modelKey)
     ? modelKey
@@ -191,15 +198,15 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           >
             {config.models.map((model) => <option key={model.key} value={model.key}>{model.label}</option>)}
           </select>
-          <button className="icon-button" type="button" aria-label="チャット設定" onClick={() => setUserSettingsOpen(true)}>
+          <button className="icon-button" type="button" aria-label="設定" data-tooltip="設定" onClick={() => setUserSettingsOpen(true)}>
             <Settings size={20} />
           </button>
           {isAdmin && (
-            <button className="icon-button" type="button" aria-label="管理設定" onClick={() => void openAdminSettings()}>
+            <button className="icon-button" type="button" aria-label="管理設定" data-tooltip="管理設定" onClick={() => void openAdminSettings()}>
               <Shield size={20} />
             </button>
           )}
-          <button className="icon-button" type="button" aria-label="ログアウト" onClick={() => void onSignOut()}>
+          <button className="icon-button" type="button" aria-label="ログアウト" data-tooltip="ログアウト" onClick={() => void onSignOut()}>
             <LogOut size={20} />
           </button>
         </div>

@@ -57,7 +57,6 @@ export function LoginScreen({ onSignedIn }: LoginScreenProps) {
         <button className="primary-button login-button" type="submit" disabled={busy}>
           {busy ? 'ログイン中...' : 'ログイン'}
         </button>
-        <p className="audit-note">会話は監査のため記録されます。</p>
       </form>
     </main>
   );

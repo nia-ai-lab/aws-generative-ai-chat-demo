@@ -97,7 +97,7 @@ async def stream_chat(invocation: ChatInvocation) -> AsyncIterator[dict[str, Any
     config: RunnableConfig = {
         "configurable": {
             "actor_id": invocation.actorId,
-            "thread_id": invocation.conversationSessionId,
+            "thread_id": invocation.runtimeSessionId,
         }
     }
     context = ChatContext(

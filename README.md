@@ -4,10 +4,11 @@
 
 ## Status
 
-現在は要件定義・システム設計フェーズです。
+フロントエンド、API、認証、AgentCoreエージェント、CDKインフラ、テストを実装済みです。
 
 - [要件定義書](./docs/requirements-definition.md)
 - [システム設計書](./docs/system-design.md)
+- [デプロイ・運用ガイド](./docs/deployment-guide.md)
 
 ## Planned architecture
 
@@ -20,6 +21,24 @@
 - Amazon Bedrock foundation models
 - Amazon DynamoDB
 - Amazon CloudWatch
+
+## Features
+
+- Cognito Access Tokenを検証するLambda Authorizerとロールベースアクセス制御
+- React SPAのレスポンシブなチャットUIと日本語IME対応
+- Claude Sonnet 5、Nova 2 Lite、Nova Proのクロスリージョン推論
+- Python/LangGraphエージェントとAgentCore Memoryのセッション内短期記憶
+- 管理者によるモデル・アプリ既定プロンプト設定
+- KMS暗号化された7日保持の会話監査ログ
+- Amplify Gen 2とCDK TypeScriptによる一括デプロイ
+
+## Local checks
+
+```bash
+npm ci
+npm run package:agent
+npm run check
+```
 
 ## Security
 

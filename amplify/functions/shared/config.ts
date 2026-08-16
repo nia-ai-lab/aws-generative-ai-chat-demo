@@ -1,0 +1,31 @@
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
+import type { AdminConfig } from '../../../shared/api-schema.js';
+import { DEFAULT_MODEL_KEY, MODEL_KEYS } from '../../../shared/model-catalog.js';
+
+export const CONFIG_KEY = 'APP_CONFIG';
+export const DEFAULT_SYSTEM_PROMPT = 'あなたはAWSトレーニング用の、簡潔で誠実なAIアシスタントです。質問の意図を確認し、日本語で分かりやすく回答してください。';
+
+const client = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
+  marshallOptions: { removeUndefinedValues: true },
+});
+
+export function defaultConfig(): AdminConfig {
+  return {
+    configVersion: 1,
+    defaultModelKey: DEFAULT_MODEL_KEY,
+    enabledModelKeys: [...MODEL_KEYS],
+    defaultSystemPrompt: DEFAULT_SYSTEM_PROMPT,
+    updatedAt: new Date(0).toISOString(),
+    updatedBy: 'system',
+  };
+}
+
+export async function readConfig(): Promise<AdminConfig> {
+  const tableName = process.env.CONFIG_TABLE_NAME;
+  if (!tableName) throw new Error('CONFIG_TABLE_NAME is not configured.');
+  const response = await client.send(new GetCommand({ TableName: tableName, Key: { pk: CONFIG_KEY } }));
+  return response.Item ? (response.Item as AdminConfig) : defaultConfig();
+}
+
+export { client as documentClient };

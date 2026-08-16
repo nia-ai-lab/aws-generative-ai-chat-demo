@@ -1,0 +1,54 @@
+{
+  "name": "aws-generative-ai-chat-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm run prepare:outputs && vite",
+    "build": "tsc -b && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "typecheck": "tsc -b",
+    "prepare:outputs": "node scripts/ensure-amplify-outputs.mjs",
+    "package:agent": "bash scripts/package-agent.sh",
+    "check": "npm run prepare:outputs && npm run lint && npm run test && npm run build",
+    "deploy": "bash scripts/deploy.sh",
+    "destroy": "bash scripts/destroy.sh"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1111.0",
+    "@aws-sdk/lib-dynamodb": "3.1111.0",
+    "aws-amplify": "6.20.0",
+    "aws-jwt-verify": "5.2.1",
+    "lucide-react": "^0.468.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@aws-amplify/backend": "1.24.0",
+    "@aws-amplify/backend-cli": "1.9.0",
+    "@eslint/js": "^9.39.1",
+    "@types/aws-lambda": "^8.10.152",
+    "@types/node": "^22.15.3",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "4.7.0",
+    "aws-cdk-lib": "2.265.0",
+    "constructs": "^10.4.2",
+    "esbuild": "0.25.12",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "jsdom": "26.1.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "^8.48.0",
+    "vite": "6.4.3",
+    "vitest": "3.2.7"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

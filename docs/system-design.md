@@ -10,13 +10,13 @@
 
 | 項目 | 採用方式 | 理由 |
 |---|---|---|
-| API | API Gateway REST API | Cognito authorizer、レスポンスストリーミング、実行ログを利用するため |
+| API | API Gateway REST API | Lambda Authorizer、レスポンスストリーミング、アクセスログを利用するため |
 | チャット応答 | SSE ストリーミング | 早い初期表示と長いモデル応答に対応するため |
 | Lambda | TypeScript / Node.js 22 | Lambda のネイティブ応答ストリーミングとアプリ全体の型共有を利用するため |
 | Agent | Python 3.12 / LangGraph | AgentCore Python SDK と `AgentCoreMemorySaver` の公式統合を利用するため |
 | Agent 配備 | Direct Code Deployment | コンテナ不要で更新が速く、トレーニング用の小規模 Agent に適するため |
 | メモリ | AgentCore Memory の短期メモリのみ | セッション内の会話継続と、セッション間の分離を両立するため |
-| 認証 | Cognito JWT | SPA、API Gateway、AgentCore Runtime で同じ利用者トークンを検証するため |
+| 認証 | Cognito Access Token + Lambda Authorizer | 独自ログイン画面のSRP認証を維持し、API GatewayとAgentCore Runtimeで同じ利用者トークンを検証するため |
 | 管理設定 | DynamoDB 単一設定レコード | 小規模で高可用、管理不要、条件付き更新が可能なため |
 | IaC | Amplify Gen 2 + CDK TypeScript | フロントとカスタム AWS リソースを一つのデプロイに統合するため |
 
@@ -27,7 +27,8 @@ flowchart LR
     U["受講者 / 管理者<br>PC・iPhone"]
     H["Amplify Hosting<br>React SPA"]
     C["Amazon Cognito<br>User Pool"]
-    G["API Gateway<br>REST API + Cognito Authorizer"]
+    G["API Gateway<br>REST API"]
+    LA["Lambda Authorizer<br>Access Token検証"]
     CH["Chat Lambda<br>TypeScript / Streaming"]
     CF["Config Lambda<br>TypeScript"]
     DB["DynamoDB<br>AppConfig"]
@@ -39,7 +40,9 @@ flowchart LR
 
     U --> H
     H --> C
-    H -->|"Bearer JWT"| G
+    H -->|"Bearer Access Token"| G
+    G --> LA
+    LA --> C
     G --> CH
     G --> CF
     CH -->|"同じ Bearer JWT を転送"| AR
@@ -58,8 +61,8 @@ flowchart LR
 ### 2.1 信頼境界
 
 1. ブラウザは信頼しない。モデル ID、ロール、セッション ID、プロンプト長をサーバー側で再検証する。
-2. API Gateway は Cognito JWT の署名、発行元、有効期限、スコープを検証する。
-3. Lambda は JWT の `cognito:groups` を使ってアプリケーションロールを検証する。
+2. API Gateway の Lambda Authorizer は Cognito Access Token の署名、発行元、App Client ID、有効期限、`token_use=access` を検証する。
+3. Lambda Authorizer は検証済みの `sub` と `cognito:groups` だけを authorizer context に渡し、業務 Lambda はその値でアプリケーションロールを検証する。
 4. Chat Lambda は受信した JWT を AgentCore Runtime の HTTPS エンドポイントへそのまま Bearer Token として転送する。
 5. AgentCore Runtime は Cognito OIDC discovery URL と App Client ID を使い、同じ JWT を再検証する。
 6. AgentCore Runtime の実行ロールだけが Bedrock モデル、Guardrail、Memory にアクセスできる。
@@ -88,11 +91,13 @@ flowchart LR
 | 画面上の会話 | React メモリ | リロード、クリア、ログアウトまで |
 | 管理者設定 | 永続保存しない。API から再取得 | 画面表示中のみ |
 
+利用者設定はデータベースへの保存禁止をセキュリティ境界とはしない。重要なのは、共有 Cognito ユーザーだけをキーにせず、アプリが発行・検証する `browserSessionId` を分離キーへ必ず含めることである。現行実装は再読み込みや Runtime の再作成にも強い `sessionStorage` を正本とし、利用者プロンプトを各チャット要求の LangGraph Runtime Context として渡す。将来 AgentCore Runtime または AgentCore Memory に保持する場合も、この分離キー設計を維持する。
+
 ### 3.2 Cognito
 
 - User Pool の自己サインアップを無効化する。
 - App Client にクライアントシークレットを設定しない。SPA に秘密情報を配置しない。
-- Resource Server に API 利用用 OAuth scope `genai-chat-api/access` を定義し、REST API の認可メソッドで要求する。
+- SPA はクライアントシークレットを持たず、ユーザー名・パスワードによる Cognito SRP 認証を行う。共有ログインIDにはメールアドレス形式のユーザー名を使用できる。
 - 一般受講者用グループ `Students`、管理者用グループ `Admins` を作成する。
 - 一般受講者用共有ユーザーを `Students` に所属させる。
 - 管理者ユーザーを `Admins` に所属させる。
@@ -102,7 +107,7 @@ flowchart LR
 
 ### 3.3 API Gateway
 
-REST API を採用し、すべての業務ルートに Cognito User Pool Authorizer を設定する。
+REST API を採用し、すべての業務ルートに Cognito Access Token を検証する Token 型 Lambda Authorizer を設定する。
 
 | メソッド | パス | 応答 | ロール |
 |---|---|---|---|
@@ -116,7 +121,7 @@ REST API を採用し、すべての業務ルートに Cognito User Pool Authori
 
 - `/chat` は Lambda proxy integration の response transfer mode を `STREAM` にする。
 - その他のルートは `BUFFERED` とする。
-- CORS は Amplify の本番・開発オリジンを列挙し、`*` を使用しない。
+- CORS は明示的な `ALLOWED_ORIGINS`、Amplify Hosting ドメイン、ローカル開発オリジンだけを反映し、`Access-Control-Allow-Origin: *` を使用しない。
 - Authorization ヘッダーだけを認証に使用する。
 - REST API のアクセスログに Authorization ヘッダーや本文を含めない。
 - 本文は各 Lambda/Agent の構造化監査ログに記録する。
@@ -126,7 +131,7 @@ REST API を採用し、すべての業務ルートに Cognito User Pool Authori
 
 TypeScript / Node.js 22 で実装し、次を担当する。
 
-1. API Gateway の Cognito authorizer context を検証する。
+1. API Gateway の Lambda authorizer context を検証する。
 2. リクエスト本文をスキーマ検証する。
 3. DynamoDB から現在の管理設定を取得する。
 4. 選択モデルが有効モデルに含まれることを検証する。
@@ -245,8 +250,12 @@ flowchart LR
 - Event expiry はサービス許容最小値の 3 日とする。
 - クリア時は新しい `conversationSessionId` に切り替え、古いセッションを再利用しない。
 - 古い短期メモリの物理削除は非同期の有効期限または環境削除で行う。
+- 利用者プロンプトは現行実装では LangGraph の Runtime Context として渡し、チェックポイントの metadata には保存しない。
+- 将来利用者設定を Memory に保存する場合も、`actor_id` と `thread_id` の両方でスコープし、Cognito `sub` 単独では読み書きしない。
 
 この方式により、同一の共有 Cognito ユーザーでも `browserSessionId` と `conversationSessionId` が異なる限り、メモリが混在しない。
+
+AgentCore Runtime は `runtimeSessionId` ごとに専用 microVM を割り当てるため、Runtime 内のメモリとファイルシステムもセッション間で分離される。一方、Runtime はセッションと利用者の対応を強制しないため、Chat Lambda は JWT の `sub`、`browserSessionId`、`conversationSessionId` からサーバー側で Runtime セッション ID と `actor_id` を導出し、クライアント指定値をそのまま認可境界に使用しない。Runtime のローカル状態はライフサイクル終了時に消失し得るため、永続性が必要な状態にはブラウザ保存または AgentCore Memory を使用する。
 
 ### 3.10 Bedrock モデル
 
@@ -318,7 +327,7 @@ sequenceDiagram
 
 1. 送信中ならストリームをキャンセルする。
 2. 画面上のメッセージを削除する。
-3. 利用者プロンプトは現在のブラウザセッション設定として維持する。
+3. 利用者プロンプトは現在のブラウザセッション設定として維持する。別ブラウザセッションには引き継がない。
 4. 新しい `conversationSessionId` を生成する。
 5. 古い ID は再利用しない。
 6. CloudWatch の監査ログは削除しない。
@@ -352,7 +361,7 @@ sequenceDiagram
 </admin_default_prompt>
 
 <user_persona untrusted="true">
-{現在の browser session にある利用者プロンプト}
+{現在の browser session に分離された利用者プロンプト}
 </user_persona>
 
 優先順位は immutable_policy > admin_default_prompt > user_persona とする。
@@ -505,7 +514,7 @@ IME 変換中は `preventDefault()` も送信処理も実行しない。送信�
 | ログイン | 可 | 可 | Cognito |
 | 設定取得 | 可 | 可 | API Gateway + Lambda |
 | チャット | 可 | 可 | API Gateway + Lambda + AgentCore |
-| 利用者プロンプト設定 | 可 | 可 | ブラウザのみ |
+| 利用者プロンプト設定 | 可 | 可 | 現行はブラウザ。将来バックエンド保持時も browser session 単位で分離 |
 | 管理設定取得 | 不可 | 可 | Lambda `cognito:groups` |
 | 管理設定更新 | 不可 | 可 | Lambda `cognito:groups` |
 | CloudWatch Logs 閲覧 | 不可 | AWS 管理者のみ | IAM |
@@ -640,7 +649,7 @@ Amplify Gen 2 は TypeScript の CDK custom resources をバックエンドと�
 | Amplify Auth resource group | Cognito User Pool、App Client、Groups |
 | `DataStack` | DynamoDB、初期設定投入 custom resource |
 | `AgentStack` | Memory、Guardrail、Agent Runtime、Runtime Endpoint、実行ロール、ログ |
-| `ApiStack` | REST API、Cognito Authorizer、Chat/Config Lambda、IAM、ログ |
+| `ApiStack` | REST API、Lambda Authorizer、Chat/Config Lambda、IAM、ログ |
 | Amplify Hosting | SPA build artifact、security headers、rewrites |
 
 依存方向は `Auth/Data/Agent -> API -> Frontend outputs` とし、循環参照を作らない。
@@ -750,7 +759,7 @@ Amplify Gen 2 は TypeScript の CDK custom resources をバックエンドと�
 
 ### 14.4 インフラ
 
-- CDK assertions による Cognito authorizer、KMS、log retention、RemovalPolicy、IAM scope の検証。
+- CDK assertions による Lambda Authorizer、AgentCore JWT authorizer、KMS、log retention、RemovalPolicy、IAM scope の検証。
 - 対象外アカウント・リージョンでデプロイが失敗すること。
 - Agent ZIP が ARM64 互換で 250 MB 未満であること。
 - CloudFormation dependency が循環しないこと。

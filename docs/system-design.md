@@ -295,11 +295,11 @@ AgentCore Runtime は `runtimeSessionId` ごとに専用 microVM を割り当て
 | `prompt-attack` | プロンプト攻撃対策 | Prompt AttackをHighで入力評価 |
 | `sensitive-information` | 個人情報の匿名化 | EMAIL、PHONEを入力・出力でANONYMIZE |
 | `denied-topic-travel` | 禁止トピック: 旅行 | 旅行、観光、宿泊、旅程を拒否 |
-| `blocked-word-pineapple` | 禁止ワード: パイナップル | 完全一致の単語・語句フィルター |
+| `blocked-word-pineapple` | 禁止ワード: pineapple | Word filters対応言語の英単語を使う完全一致フィルター |
 
 Converse/ConverseStreamの `guardrailConfig` は一つのGuardrail IDを指定するため、CDKは5個の単独プリセットと10個の二者組み合わせ、合計15個のGuardrailを作成する。Chat Lambdaは管理者キーと受講者キーをカタログ順に正規化し、対応するIDと番号付きバージョンをAgentへ渡す。クライアント指定のIDやバージョンは受け付けない。
 
-日本語評価のためコンテンツフィルター、Prompt Attack、Denied TopicsはStandard tierを使用し、`apac.guardrail.v1:0`でクロスリージョン評価する。モデル呼び出しには `trace=disabled` と同期ストリーム評価を指定する。`guardContent`による部分評価や単独の`ApplyGuardrail` APIではなく、会話全体を保護する `guardrailConfig` を使用する。
+日本語評価のためコンテンツフィルター、Prompt Attack、Denied TopicsはStandard tierを使用し、`apac.guardrail.v1:0`でクロスリージョン評価する。Word filtersは日本語に対応しないため、教材語句には対応言語である英語の `pineapple` を使用する。モデル呼び出しには `trace=disabled` と同期ストリーム評価を指定する。`guardContent`による部分評価や単独の`ApplyGuardrail` APIではなく、会話全体を保護する `guardrailConfig` を使用する。
 
 PII匿名化後も、Chat Lambdaの監査ログには受講者の原入力が保存される。教材では架空のメールアドレスと電話番号だけを使用し、ログはKMS暗号化、最小権限、7日保持を維持する。
 

@@ -40,8 +40,8 @@ export const GUARDRAIL_CATALOG: Record<GuardrailKey, {
     description: '旅行、観光、宿泊、旅程に関する話題を拒否します。',
   },
   'blocked-word-pineapple': {
-    label: '禁止ワード: パイナップル',
-    description: '「パイナップル」を含む入力や出力を拒否します。',
+    label: '禁止ワード: pineapple',
+    description: '英単語「pineapple」を含む入力や出力を拒否します。',
   },
 };
 

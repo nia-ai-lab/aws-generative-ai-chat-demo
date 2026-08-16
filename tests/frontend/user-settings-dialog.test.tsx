@@ -25,7 +25,7 @@ describe('UserSettingsDialog', () => {
     expect(html).toContain('reset-button');
     expect(html).toContain('Guardrail');
     expect(html).toContain('禁止トピック: 旅行');
-    expect(html).toContain('禁止ワード: パイナップル');
+    expect(html).toContain('禁止ワード: pineapple');
     expect(html).toContain('管理者必須: コンテンツ保護');
   });
 });

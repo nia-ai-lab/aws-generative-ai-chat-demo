@@ -44,7 +44,7 @@ interface DeployedGuardrails {
   profileArns: string[];
 }
 
-const GUARDRAIL_DEFINITION_VERSION = 1;
+const GUARDRAIL_DEFINITION_VERSION = 2;
 const GUARDRAIL_NAME_CODES: Record<GuardrailPolicyKey, string> = {
   'content-safety': 'content',
   'prompt-attack': 'attack',
@@ -115,7 +115,7 @@ function guardrailPolicyProperties(
     } : undefined,
     wordPolicyConfig: policies.includes('blocked-word-pineapple') ? {
       wordsConfig: [{
-        text: 'パイナップル',
+        text: 'pineapple',
         inputAction: 'BLOCK',
         outputAction: 'BLOCK',
         inputEnabled: true,

@@ -74,7 +74,7 @@ unset STUDENT_USERNAME STUDENT_PASSWORD ADMIN_USERNAME ADMIN_PASSWORD
 5. `AI Thinking...` の後に応答が逐次表示され、見出し、箇条書き、表、リンク、コードブロックなどのMarkdownが描画される。
 6. 同一会話では文脈を保持し、クリア後は以前の文脈を参照しない。
 7. 2つのブラウザセッションで同じ共有IDを使っても会話が混ざらない。
-8. 初期状態のGuardrailが「なし」で、旅行トピックとパイナップル禁止の各プリセットが対応する入力だけを拒否する。
+8. 初期状態のGuardrailが「なし」で、旅行トピックが日本語の旅行質問を拒否し、英単語 `pineapple` 禁止が `Tell me about pineapple.` を拒否する。
 9. 管理者必須Guardrailを設定すると、受講者側が「なし」でも解除されない。
 10. PII匿名化の確認には架空のメールアドレスまたは電話番号だけを使用する。
 11. CloudWatch Logsで会話監査ログを確認でき、AuthorizationヘッダーやJWTが含まれない。

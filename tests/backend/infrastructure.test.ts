@@ -82,6 +82,9 @@ describe('application infrastructure', () => {
   it('creates versioned opt-in guardrail presets and their combinations', () => {
     template.resourceCountIs('AWS::Bedrock::Guardrail', 15);
     template.resourceCountIs('AWS::Bedrock::GuardrailVersion', 15);
+    template.hasResourceProperties('AWS::Bedrock::GuardrailVersion', {
+      Description: 'Immutable training definition v2',
+    });
     template.hasResourceProperties('AWS::Bedrock::Guardrail', {
       TopicPolicyConfig: {
         TopicsConfig: Match.arrayWith([Match.objectLike({ Name: 'Travel', Type: 'DENY' })]),
@@ -90,7 +93,7 @@ describe('application infrastructure', () => {
     });
     template.hasResourceProperties('AWS::Bedrock::Guardrail', {
       WordPolicyConfig: {
-        WordsConfig: Match.arrayWith([Match.objectLike({ Text: 'パイナップル' })]),
+        WordsConfig: Match.arrayWith([Match.objectLike({ Text: 'pineapple' })]),
       },
     });
   });

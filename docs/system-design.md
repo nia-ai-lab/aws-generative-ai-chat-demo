@@ -275,8 +275,11 @@ AgentCore Runtime は `runtimeSessionId` ごとに専用 microVM を割り当て
 |---|---|
 | `maxTokens` | 1,024 |
 | `temperature` | 0.3 |
+| `topP` | 未指定（モデル既定） |
 | リトライ | Throttling、ServiceUnavailable、ModelTimeout のみ指数バックオフ |
 | タイムアウト | Agent 全体の上限を明示し、クライアント切断後の実行も監視する |
+
+受講者は設定ダイアログから上記3項目を変更できる。設定はブラウザタブの `sessionStorage` に保存し、共有CognitoユーザーやDynamoDBをキーとした全体設定にはしない。SPA、Chat Lambda、Agentの3層で値を検証し、Chat Lambdaの監査ログには実際に使用した値を記録する。Top Pが未指定の場合、Agentは`top_p`をBedrock Converseへ渡さず、モデル既定値を使用する。最大アウトプットトークンは未指定にせず常に明示し、トークンクォータの過剰予約を避ける。
 
 ## 4. セッション設計
 
@@ -415,7 +418,12 @@ sequenceDiagram
   "modelKey": "claude-sonnet-5",
   "message": "生成AIとは何ですか？",
   "userSystemPrompt": "親しみやすい先生として説明してください。現在日時は $DATETIME です。",
-  "timeZone": "Asia/Tokyo"
+  "timeZone": "Asia/Tokyo",
+  "generationConfig": {
+    "temperature": 0.3,
+    "topP": null,
+    "maxOutputTokens": 1024
+  }
 }
 ```
 
@@ -490,6 +498,9 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
 
 - システムプロンプト(ペルソナ)
 - `$DATETIME` / `$TIMEZONE` 挿入ボタン
+- Temperature（初期値0.3）
+- Top P（初期状態はモデル既定）
+- 最大アウトプットトークン（初期値1,024）
 - 適用
 - キャンセル
 

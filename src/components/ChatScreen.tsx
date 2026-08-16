@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { LogOut, Send, Settings, Shield, Trash2 } from 'lucide-react';
 import type { AdminConfig, PublicConfig, UpdateAdminConfig } from '../../shared/api-schema';
+import type { GenerationConfig } from '../../shared/generation-config';
 import { MODEL_CATALOG, type ModelKey } from '../../shared/model-catalog';
 import { safeErrorMessage } from '../../shared/errors';
 import { getAdminConfig, streamChat, updateAdminConfig } from '../lib/api';
@@ -9,8 +10,10 @@ import { getBrowserTimeZone } from '../lib/time-zone';
 import {
   getBrowserSessionId,
   getConversationSessionId,
+  getGenerationConfig,
   getUserSystemPrompt,
   resetConversationSessionId,
+  setGenerationConfig,
   setUserSystemPrompt,
 } from '../lib/session';
 import { AdminSettingsDialog } from './AdminSettingsDialog';
@@ -38,6 +41,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
   const [input, setInput] = useState('');
   const [modelKey, setModelKey] = useState<ModelKey>(config.defaultModelKey);
   const [userPrompt, setUserPrompt] = useState(getUserSystemPrompt);
+  const [generationConfig, setCurrentGenerationConfig] = useState(getGenerationConfig);
   const [sending, setSending] = useState(false);
   const [userSettingsOpen, setUserSettingsOpen] = useState(false);
   const [adminSettingsOpen, setAdminSettingsOpen] = useState(false);
@@ -91,6 +95,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           message,
           userSystemPrompt: userPrompt,
           timeZone: getBrowserTimeZone(),
+          generationConfig,
         },
         controller.signal,
       )) {
@@ -147,9 +152,11 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
     inputRef.current?.focus();
   }
 
-  function saveUserPrompt(value: string) {
+  function saveUserPrompt(value: string, updatedGenerationConfig: GenerationConfig) {
     setUserSystemPrompt(value);
     setUserPrompt(value);
+    setGenerationConfig(updatedGenerationConfig);
+    setCurrentGenerationConfig(updatedGenerationConfig);
     setUserSettingsOpen(false);
   }
 
@@ -257,7 +264,13 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
         </button>
       </div>
 
-      <UserSettingsDialog open={userSettingsOpen} value={userPrompt} onClose={() => setUserSettingsOpen(false)} onSave={saveUserPrompt} />
+      <UserSettingsDialog
+        open={userSettingsOpen}
+        value={userPrompt}
+        generationConfig={generationConfig}
+        onClose={() => setUserSettingsOpen(false)}
+        onSave={saveUserPrompt}
+      />
       <AdminSettingsDialog
         open={adminSettingsOpen}
         config={adminConfig}

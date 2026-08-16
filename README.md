@@ -30,6 +30,7 @@
 - Python/LangGraphエージェントとAgentCore Memoryのセッション内短期記憶
 - 管理者によるモデル・アプリ既定プロンプト設定（空設定対応）
 - ペルソナ設定と現在日時・タイムゾーンの動的プロンプト変数
+- 受講者ごとのTemperature・Top P・最大アウトプットトークン設定
 - KMS暗号化された7日保持の会話監査ログ
 - Amplify Gen 2とCDK TypeScriptによる一括デプロイ
 

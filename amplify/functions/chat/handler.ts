@@ -75,6 +75,9 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
   let assistantMessage = '';
   let inputTokens: number | undefined;
   let outputTokens: number | undefined;
+  let temperature: number | undefined;
+  let topP: number | null | undefined;
+  let maxOutputTokens: number | undefined;
   let activeStream: LambdaResponseStream | undefined;
 
   try {
@@ -85,6 +88,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
     requestId = input.requestId;
     conversationSessionId = input.conversationSessionId;
     selectedModel = input.modelKey;
+    ({ temperature, topP, maxOutputTokens } = input.generationConfig);
     userMessage = input.message;
     auditActorId = actorId(auth.sub, input.browserSessionId);
     const isolatedRuntimeSessionId = runtimeSessionId(auditActorId, input.conversationSessionId);
@@ -116,6 +120,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
         message: input.message,
         adminSystemPrompt: expandPromptVariables(config.defaultSystemPrompt, promptContext),
         userSystemPrompt: expandPromptVariables(input.userSystemPrompt, promptContext),
+        generationConfig: input.generationConfig,
       }),
       signal: AbortSignal.timeout(85_000),
     });
@@ -158,6 +163,9 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       assistantMessage,
       inputTokens,
       outputTokens,
+      temperature,
+      topP,
+      maxOutputTokens,
       latencyMs: Date.now() - startedAt,
       result: 'SUCCESS',
     }));
@@ -186,6 +194,9 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       assistantMessage,
       inputTokens,
       outputTokens,
+      temperature,
+      topP,
+      maxOutputTokens,
       latencyMs: Date.now() - startedAt,
       result: code,
       errorType: error instanceof Error ? error.name : 'UnknownError',

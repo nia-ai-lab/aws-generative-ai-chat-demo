@@ -9,6 +9,11 @@ const validChat = {
   message: '生成AIとは何ですか？',
   userSystemPrompt: '',
   timeZone: 'Asia/Tokyo',
+  generationConfig: {
+    temperature: 0.3,
+    topP: null,
+    maxOutputTokens: 1_024,
+  },
 };
 
 describe('chat request validation', () => {
@@ -23,6 +28,21 @@ describe('chat request validation', () => {
 
   it('rejects an invalid time zone', () => {
     expect(() => chatRequestSchema.parse({ ...validChat, timeZone: 'Moon/SeaOfTranquility' })).toThrow();
+  });
+
+  it('validates participant generation settings', () => {
+    expect(chatRequestSchema.parse({
+      ...validChat,
+      generationConfig: { temperature: 0.8, topP: 0.9, maxOutputTokens: 2_048 },
+    }).generationConfig).toEqual({ temperature: 0.8, topP: 0.9, maxOutputTokens: 2_048 });
+    expect(() => chatRequestSchema.parse({
+      ...validChat,
+      generationConfig: { temperature: 1.1, topP: null, maxOutputTokens: 1_024 },
+    })).toThrow();
+    expect(() => chatRequestSchema.parse({
+      ...validChat,
+      generationConfig: { temperature: 0.3, topP: null, maxOutputTokens: 4_097 },
+    })).toThrow();
   });
 });
 

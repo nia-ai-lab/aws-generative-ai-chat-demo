@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { generationConfigSchema } from './generation-config.js';
 import { MODEL_KEYS } from './model-catalog.js';
 
 const modelKeySchema = z.enum(MODEL_KEYS);
@@ -20,6 +21,7 @@ export const chatRequestSchema = z.object({
   message: z.string().trim().min(1).max(8_000),
   userSystemPrompt: z.string().max(4_000).default(''),
   timeZone: timeZoneSchema,
+  generationConfig: generationConfigSchema,
 });
 
 export type ChatRequest = z.infer<typeof chatRequestSchema>;

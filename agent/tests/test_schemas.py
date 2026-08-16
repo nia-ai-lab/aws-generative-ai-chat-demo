@@ -4,7 +4,7 @@ from pydantic import ValidationError
 from schemas import ChatInvocation
 
 
-def valid_invocation() -> dict[str, str]:
+def valid_invocation() -> dict[str, object]:
     return {
         "requestId": "550e8400-e29b-41d4-a716-446655440000",
         "actorId": "a" * 64,
@@ -15,6 +15,11 @@ def valid_invocation() -> dict[str, str]:
         "message": "前の発言を覚えていますか？",
         "adminSystemPrompt": "安全に回答してください。",
         "userSystemPrompt": "",
+        "generationConfig": {
+            "temperature": 0.3,
+            "topP": None,
+            "maxOutputTokens": 1_024,
+        },
     }
 
 
@@ -31,3 +36,25 @@ def test_runtime_session_id_must_be_server_derived_hash() -> None:
 def test_empty_admin_system_prompt_is_accepted() -> None:
     invocation = ChatInvocation.model_validate({**valid_invocation(), "adminSystemPrompt": ""})
     assert invocation.adminSystemPrompt == ""
+
+
+def test_generation_config_boundaries_are_enforced() -> None:
+    with pytest.raises(ValidationError):
+        ChatInvocation.model_validate({
+            **valid_invocation(),
+            "generationConfig": {
+                "temperature": 1.1,
+                "topP": None,
+                "maxOutputTokens": 1_024,
+            },
+        })
+
+    with pytest.raises(ValidationError):
+        ChatInvocation.model_validate({
+            **valid_invocation(),
+            "generationConfig": {
+                "temperature": 0.3,
+                "topP": None,
+                "maxOutputTokens": 4_097,
+            },
+        })

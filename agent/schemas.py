@@ -3,6 +3,14 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class GenerationConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    temperature: float = Field(ge=0, le=1)
+    topP: float | None = Field(default=None, ge=0, le=1)
+    maxOutputTokens: int = Field(ge=1, le=4_096)
+
+
 class ChatInvocation(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -15,3 +23,4 @@ class ChatInvocation(BaseModel):
     message: str = Field(min_length=1, max_length=8_000)
     adminSystemPrompt: str = Field(max_length=8_000)
     userSystemPrompt: str = Field(max_length=4_000)
+    generationConfig: GenerationConfig

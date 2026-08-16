@@ -25,8 +25,13 @@ GUARDRAIL_ID = os.getenv("GUARDRAIL_ID", "")
 GUARDRAIL_VERSION = os.getenv("GUARDRAIL_VERSION", "DRAFT")
 
 
-@lru_cache(maxsize=8)
-def model_for(model_id: str) -> ChatBedrockConverse:
+@lru_cache(maxsize=32)
+def model_for(
+    model_id: str,
+    temperature: float,
+    top_p: float | None,
+    max_output_tokens: int,
+) -> ChatBedrockConverse:
     guardrails: dict[str, Any] | None = None
     if GUARDRAIL_ID:
         guardrails = {
@@ -34,14 +39,19 @@ def model_for(model_id: str) -> ChatBedrockConverse:
             "guardrailVersion": GUARDRAIL_VERSION,
             "trace": "enabled",
         }
+    model_options: dict[str, Any] = {
+        "model": model_id,
+        "region_name": REGION,
+        "temperature": temperature,
+        "max_tokens": max_output_tokens,
+        "max_retries": 2,
+        "timeout": 70,
+        "guardrails": guardrails,
+    }
+    if top_p is not None:
+        model_options["top_p"] = top_p
     return ChatBedrockConverse(
-        model=model_id,
-        region_name=REGION,
-        temperature=0.3,
-        max_tokens=1_024,
-        max_retries=2,
-        timeout=70,
-        guardrails=guardrails,
+        **model_options,
     )
 
 
@@ -50,6 +60,9 @@ class ChatContext:
     model_id: str
     admin_system_prompt: str
     user_system_prompt: str
+    temperature: float
+    top_p: float | None
+    max_output_tokens: int
 
 
 async def call_model(
@@ -61,7 +74,12 @@ async def call_model(
         context.admin_system_prompt,
         context.user_system_prompt,
     )
-    response = await model_for(context.model_id).ainvoke([SystemMessage(system_prompt), *state["messages"]])
+    response = await model_for(
+        context.model_id,
+        context.temperature,
+        context.top_p,
+        context.max_output_tokens,
+    ).ainvoke([SystemMessage(system_prompt), *state["messages"]])
     return {"messages": [response]}
 
 
@@ -104,6 +122,9 @@ async def stream_chat(invocation: ChatInvocation) -> AsyncIterator[dict[str, Any
         model_id=invocation.modelId,
         admin_system_prompt=invocation.adminSystemPrompt,
         user_system_prompt=invocation.userSystemPrompt,
+        temperature=invocation.generationConfig.temperature,
+        top_p=invocation.generationConfig.topP,
+        max_output_tokens=invocation.generationConfig.maxOutputTokens,
     )
     final_metadata: dict[str, Any] = {}
     async for chunk, _metadata in GRAPH.astream(

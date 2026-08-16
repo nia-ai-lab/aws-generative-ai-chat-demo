@@ -4,7 +4,7 @@ import type { AdminConfig } from '../../../shared/api-schema.js';
 import { DEFAULT_MODEL_KEY, MODEL_KEYS } from '../../../shared/model-catalog.js';
 
 export const CONFIG_KEY = 'APP_CONFIG';
-export const DEFAULT_SYSTEM_PROMPT = 'あなたはAWSトレーニング用の、簡潔で誠実なAIアシスタントです。質問の意図を確認し、日本語で分かりやすく回答してください。';
+export const DEFAULT_SYSTEM_PROMPT = '';
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
   marshallOptions: { removeUndefinedValues: true },

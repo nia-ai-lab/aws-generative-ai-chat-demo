@@ -8,6 +8,7 @@ const validChat = {
   modelKey: 'claude-sonnet-5',
   message: '生成AIとは何ですか？',
   userSystemPrompt: '',
+  timeZone: 'Asia/Tokyo',
 };
 
 describe('chat request validation', () => {
@@ -19,9 +20,23 @@ describe('chat request validation', () => {
     expect(() => chatRequestSchema.parse({ ...validChat, message: '  ' })).toThrow();
     expect(() => chatRequestSchema.parse({ ...validChat, message: 'x'.repeat(8_001) })).toThrow();
   });
+
+  it('rejects an invalid time zone', () => {
+    expect(() => chatRequestSchema.parse({ ...validChat, timeZone: 'Moon/SeaOfTranquility' })).toThrow();
+  });
 });
 
 describe('admin config validation', () => {
+  it('allows an empty app default prompt', () => {
+    const result = updateAdminConfigSchema.parse({
+      expectedConfigVersion: 1,
+      defaultModelKey: 'claude-sonnet-5',
+      enabledModelKeys: ['claude-sonnet-5'],
+      defaultSystemPrompt: '',
+    });
+    expect(result.defaultSystemPrompt).toBe('');
+  });
+
   it('requires the default model to remain enabled', () => {
     expect(() => updateAdminConfigSchema.parse({
       expectedConfigVersion: 1,

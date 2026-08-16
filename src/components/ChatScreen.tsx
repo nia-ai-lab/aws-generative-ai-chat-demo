@@ -5,6 +5,7 @@ import { MODEL_CATALOG, type ModelKey } from '../../shared/model-catalog';
 import { safeErrorMessage } from '../../shared/errors';
 import { getAdminConfig, streamChat, updateAdminConfig } from '../lib/api';
 import { shouldSendOnKeyDown } from '../lib/keyboard';
+import { getBrowserTimeZone } from '../lib/time-zone';
 import {
   getBrowserSessionId,
   getConversationSessionId,
@@ -89,6 +90,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           modelKey: selectedModelKey,
           message,
           userSystemPrompt: userPrompt,
+          timeZone: getBrowserTimeZone(),
         },
         controller.signal,
       )) {

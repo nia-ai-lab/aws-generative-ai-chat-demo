@@ -347,7 +347,20 @@ sequenceDiagram
 
 固定安全ポリシーは、管理者設定や利用者設定では削除できない。管理者が編集する「アプリ既定プロンプト」は業務上の振る舞いを変更できるが、認証情報の開示、内部プロンプトの開示、有害行為への協力などの固定禁止事項を上書きできない。
 
-### 5.2 組み立て例
+アプリ既定プロンプトの初期値は空文字列とし、管理者は空のまま保存できる。固定安全ポリシーは別レイヤーで常に適用するため、アプリ既定プロンプトが空でも最低限の安全制御は維持される。
+
+### 5.2 動的プロンプト変数
+
+アプリ既定プロンプトと「システムプロンプト(ペルソナ)」では次の変数を利用できる。
+
+| 変数 | チャット実行時の値 |
+|---|---|
+| `$DATETIME` | 利用者タイムゾーンで表した現在日時。ISO 8601形式でUTCオフセットを含む。 |
+| `$TIMEZONE` | ブラウザが報告したIANAタイムゾーン名（例: `Asia/Tokyo`）。 |
+
+画面には各変数の挿入ボタンを置き、選択範囲またはカーソル位置へ挿入する。DynamoDBおよびブラウザセッションには未展開のテンプレートを保存する。ブラウザはタイムゾーン名だけを送信し、Chat Lambdaが入力検証後、サーバー時刻を基準に両変数を展開してAgentCore Runtimeへ渡す。これにより、クライアントが現在日時を偽装する経路を設けない。
+
+### 5.3 組み立て例
 
 ```text
 <immutable_policy>
@@ -401,7 +414,8 @@ sequenceDiagram
   "conversationSessionId": "b52817f8-3778-45be-8ca6-5ad67956b9f7",
   "modelKey": "claude-sonnet-5",
   "message": "生成AIとは何ですか？",
-  "userSystemPrompt": "親しみやすい先生として説明してください。"
+  "userSystemPrompt": "親しみやすい先生として説明してください。現在日時は $DATETIME です。",
+  "timeZone": "Asia/Tokyo"
 }
 ```
 
@@ -433,7 +447,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
   "expectedConfigVersion": 4,
   "defaultModelKey": "nova-2-lite",
   "enabledModelKeys": ["claude-sonnet-5", "nova-2-lite"],
-  "defaultSystemPrompt": "あなたは簡潔で安全なAIアシスタントです。"
+  "defaultSystemPrompt": ""
 }
 ```
 
@@ -474,13 +488,15 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
 
 #### 利用者設定ダイアログ
 
-- 利用者システムプロンプト
+- システムプロンプト(ペルソナ)
+- `$DATETIME` / `$TIMEZONE` 挿入ボタン
 - 適用
 - キャンセル
 
 #### 管理者設定ダイアログ
 
 - アプリ既定プロンプト
+- `$DATETIME` / `$TIMEZONE` 挿入ボタン
 - 有効モデル
 - 既定モデル
 - 保存

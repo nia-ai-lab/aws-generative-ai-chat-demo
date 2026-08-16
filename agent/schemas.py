@@ -13,5 +13,5 @@ class ChatInvocation(BaseModel):
     modelId: str = Field(min_length=3, max_length=256)
     modelKey: str = Field(min_length=1, max_length=64)
     message: str = Field(min_length=1, max_length=8_000)
-    adminSystemPrompt: str = Field(min_length=1, max_length=8_000)
+    adminSystemPrompt: str = Field(max_length=8_000)
     userSystemPrompt: str = Field(max_length=4_000)

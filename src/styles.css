@@ -67,6 +67,7 @@ button:disabled { cursor: default; opacity: .5; }
 .login-card h1 { margin: 24px 0 32px; font-size: 27px; letter-spacing: -.04em; }
 .login-card label, .field-block { display: grid; gap: 8px; margin: 16px 0; }
 .login-card label span, .field-block span, legend { color: var(--muted); font-size: 13px; font-weight: 600; }
+.field-block > label { color: var(--muted); font-size: 13px; font-weight: 600; }
 
 input, textarea, select {
   color: #191918;
@@ -245,6 +246,19 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
 .model-fieldset { display: grid; gap: 10px; margin: 0 0 20px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
 .check-row { display: flex; align-items: center; gap: 9px; font-size: 14px; }
 .check-row input { width: 17px; height: 17px; }
+.prompt-variable-tools { display: flex; flex-wrap: wrap; gap: 7px; margin-top: -1px; }
+.prompt-variable-tools button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: #4d4e4a;
+  background: var(--surface-soft);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 650;
+}
+.prompt-variable-tools button:hover { color: var(--accent); border-color: #aab9e4; background: #f5f7fd; }
 
 @media (max-width: 680px) {
   .app-header { min-height: 58px; padding: 9px 12px; }

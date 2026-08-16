@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { AdminConfig, UpdateAdminConfig } from '../../shared/api-schema';
 import { MODEL_CATALOG, MODEL_KEYS, type ModelKey } from '../../shared/model-catalog';
 import { Dialog } from './Dialog';
+import { PromptEditor } from './PromptEditor';
 
 interface AdminSettingsDialogProps {
   open: boolean;
@@ -75,13 +76,16 @@ function AdminSettingsForm({ config, onClose, onSave }: {
           {enabled.map((key) => <option key={key} value={key}>{MODEL_CATALOG[key].label}</option>)}
         </select>
       </label>
-      <label className="field-block">
-        <span>アプリ既定プロンプト</span>
-        <textarea rows={8} maxLength={8_000} value={prompt} onChange={(event) => setPrompt(event.target.value)} />
-      </label>
+      <PromptEditor
+        label="アプリ既定プロンプト"
+        rows={8}
+        maxLength={8_000}
+        value={prompt}
+        onChange={setPrompt}
+      />
       <div className="dialog-actions">
         <button type="button" className="secondary-button" onClick={onClose}>キャンセル</button>
-        <button type="button" className="primary-button" disabled={saving || !prompt.trim()} onClick={save}>
+        <button type="button" className="primary-button" disabled={saving} onClick={save}>
           {saving ? '保存中...' : '保存'}
         </button>
       </div>

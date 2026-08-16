@@ -1,6 +1,7 @@
 import type { APIGatewayProxyEvent, Context } from 'aws-lambda';
 import { chatRequestSchema, type ChatStreamEvent } from '../../../shared/api-schema.js';
 import { MODEL_CATALOG } from '../../../shared/model-catalog.js';
+import { expandPromptVariables } from '../../../shared/prompt-variables.js';
 import { bearerToken, getAuthContext } from '../shared/auth.js';
 import { readConfig } from '../shared/config.js';
 import { corsHeaders } from '../shared/http.js';
@@ -87,6 +88,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
     userMessage = input.message;
     auditActorId = actorId(auth.sub, input.browserSessionId);
     const isolatedRuntimeSessionId = runtimeSessionId(auditActorId, input.conversationSessionId);
+    const promptContext = { now: new Date(), timeZone: input.timeZone };
 
     if (!config.enabledModelKeys.includes(input.modelKey)) {
       finishError(event, originalStream, 400, 'MODEL_NOT_ALLOWED');
@@ -112,8 +114,8 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
         modelId: MODEL_CATALOG[input.modelKey].inferenceProfileId,
         modelKey: input.modelKey,
         message: input.message,
-        adminSystemPrompt: config.defaultSystemPrompt,
-        userSystemPrompt: input.userSystemPrompt,
+        adminSystemPrompt: expandPromptVariables(config.defaultSystemPrompt, promptContext),
+        userSystemPrompt: expandPromptVariables(input.userSystemPrompt, promptContext),
       }),
       signal: AbortSignal.timeout(85_000),
     });

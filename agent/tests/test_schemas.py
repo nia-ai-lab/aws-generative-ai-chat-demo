@@ -26,3 +26,8 @@ def test_runtime_session_id_is_accepted() -> None:
 def test_runtime_session_id_must_be_server_derived_hash() -> None:
     with pytest.raises(ValidationError):
         ChatInvocation.model_validate({**valid_invocation(), "runtimeSessionId": "not-a-hash"})
+
+
+def test_empty_admin_system_prompt_is_accepted() -> None:
+    invocation = ChatInvocation.model_validate({**valid_invocation(), "adminSystemPrompt": ""})
+    assert invocation.adminSystemPrompt == ""

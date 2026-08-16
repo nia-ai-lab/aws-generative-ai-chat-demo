@@ -3,6 +3,14 @@ import { MODEL_KEYS } from './model-catalog.js';
 
 const modelKeySchema = z.enum(MODEL_KEYS);
 const uuidSchema = z.string().uuid();
+const timeZoneSchema = z.string().min(1).max(64).refine((value) => {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}, 'A valid IANA time zone is required.');
 
 export const chatRequestSchema = z.object({
   requestId: uuidSchema,
@@ -11,6 +19,7 @@ export const chatRequestSchema = z.object({
   modelKey: modelKeySchema,
   message: z.string().trim().min(1).max(8_000),
   userSystemPrompt: z.string().max(4_000).default(''),
+  timeZone: timeZoneSchema,
 });
 
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
@@ -27,7 +36,7 @@ export const adminConfigSchema = z.object({
   configVersion: z.number().int().positive(),
   defaultModelKey: modelKeySchema,
   enabledModelKeys: z.array(modelKeySchema).min(1),
-  defaultSystemPrompt: z.string().min(1).max(8_000),
+  defaultSystemPrompt: z.string().max(8_000),
   updatedAt: z.string(),
   updatedBy: z.string(),
 });
@@ -39,7 +48,7 @@ export const updateAdminConfigSchema = z
     expectedConfigVersion: z.number().int().positive(),
     defaultModelKey: modelKeySchema,
     enabledModelKeys: z.array(modelKeySchema).min(1),
-    defaultSystemPrompt: z.string().trim().min(1).max(8_000),
+    defaultSystemPrompt: z.string().trim().max(8_000),
   })
   .superRefine((value, context) => {
     if (!value.enabledModelKeys.includes(value.defaultModelKey)) {

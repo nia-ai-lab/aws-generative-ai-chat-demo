@@ -501,6 +501,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
 - Temperature（初期値0.3）
 - Top P（初期状態はモデル既定）
 - 最大アウトプットトークン（初期値1,024）
+- デフォルトに戻す（Temperature、Top P、最大アウトプットトークンを初期値へ戻し、ペルソナは維持。「適用」で確定）
 - 適用
 - キャンセル
 

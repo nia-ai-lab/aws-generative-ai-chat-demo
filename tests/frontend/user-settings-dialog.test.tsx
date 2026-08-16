@@ -19,5 +19,7 @@ describe('UserSettingsDialog', () => {
     expect(html).toContain('placeholder="モデル既定"');
     expect(html).toContain('最大アウトプットトークン');
     expect(html).toContain('value="1024"');
+    expect(html).toContain('デフォルトに戻す');
+    expect(html).toContain('reset-button');
   });
 });

@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { generationConfigSchema, type GenerationConfig } from '../../shared/generation-config';
+import {
+  DEFAULT_GENERATION_CONFIG,
+  generationConfigSchema,
+  type GenerationConfig,
+} from '../../shared/generation-config';
 import { Dialog } from './Dialog';
 import { PromptEditor } from './PromptEditor';
 
@@ -29,6 +33,12 @@ export function UserSettingsDialog({ open, value, generationConfig, onClose, onS
     setTopP(generationConfig.topP === null ? '' : String(generationConfig.topP));
     setMaxOutputTokens(String(generationConfig.maxOutputTokens));
     onClose();
+  }
+
+  function resetGenerationDefaults() {
+    setTemperature(String(DEFAULT_GENERATION_CONFIG.temperature));
+    setTopP(DEFAULT_GENERATION_CONFIG.topP === null ? '' : String(DEFAULT_GENERATION_CONFIG.topP));
+    setMaxOutputTokens(String(DEFAULT_GENERATION_CONFIG.maxOutputTokens));
   }
 
   return (
@@ -81,6 +91,9 @@ export function UserSettingsDialog({ open, value, generationConfig, onClose, onS
         </label>
       </div>
       <div className="dialog-actions">
+        <button type="button" className="secondary-button reset-button" onClick={resetGenerationDefaults}>
+          デフォルトに戻す
+        </button>
         <button type="button" className="secondary-button" onClick={cancel}>キャンセル</button>
         <button
           type="button"

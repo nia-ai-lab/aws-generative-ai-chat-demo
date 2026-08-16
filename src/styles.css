@@ -243,6 +243,7 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
 .dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .dialog-header h2 { margin: 0; font-size: 19px; letter-spacing: -.025em; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
+.dialog-actions .reset-button { margin-right: auto; }
 .model-fieldset { display: grid; gap: 10px; margin: 0 0 20px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
 .check-row { display: flex; align-items: center; gap: 9px; font-size: 14px; }
 .check-row input { width: 17px; height: 17px; }
@@ -278,6 +279,7 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
   .dialog { padding: 18px; border-radius: 17px; }
   .generation-settings { grid-template-columns: 1fr; }
   .generation-settings .full-width { grid-column: auto; }
+  .dialog-actions { flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {

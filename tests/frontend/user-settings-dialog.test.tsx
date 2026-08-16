@@ -9,8 +9,8 @@ describe('UserSettingsDialog', () => {
         open
         value=""
         generationConfig={{ temperature: 0.3, topP: null, maxOutputTokens: 1_024 }}
-        guardrailKey="none"
-        requiredGuardrailKey="content-safety"
+        guardrailKeys={['denied-topic-travel', 'blocked-word-pineapple']}
+        requiredGuardrailKeys={['content-safety', 'prompt-attack']}
         onClose={() => undefined}
         onSave={() => undefined}
       />,
@@ -26,6 +26,7 @@ describe('UserSettingsDialog', () => {
     expect(html).toContain('Guardrail');
     expect(html).toContain('禁止トピック: 旅行');
     expect(html).toContain('禁止ワード: pineapple');
-    expect(html).toContain('管理者必須: コンテンツ保護');
+    expect(html).toContain('type="checkbox"');
+    expect(html).toContain('管理者必須: コンテンツ保護 / プロンプト攻撃対策');
   });
 });

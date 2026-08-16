@@ -1,6 +1,6 @@
 import {
   effectiveGuardrailKey,
-  type GuardrailKey,
+  type GuardrailPolicyKey,
 } from '../../../shared/guardrail-catalog.js';
 
 export interface GuardrailDeployment {
@@ -13,11 +13,11 @@ export interface ResolvedGuardrail extends GuardrailDeployment {
 }
 
 export function resolveGuardrail(
-  requiredGuardrailKey: GuardrailKey,
-  participantGuardrailKey: GuardrailKey,
+  requiredGuardrailKeys: readonly GuardrailPolicyKey[],
+  participantGuardrailKeys: readonly GuardrailPolicyKey[],
   catalogJson = process.env.GUARDRAIL_CATALOG_JSON,
 ): ResolvedGuardrail {
-  const effectiveKey = effectiveGuardrailKey(requiredGuardrailKey, participantGuardrailKey);
+  const effectiveKey = effectiveGuardrailKey(requiredGuardrailKeys, participantGuardrailKeys);
   if (effectiveKey === 'none') {
     return { effectiveGuardrailKey: effectiveKey, guardrailId: '', guardrailVersion: '' };
   }

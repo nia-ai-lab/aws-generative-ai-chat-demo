@@ -1,7 +1,11 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { adminConfigSchema, type AdminConfig } from '../../../shared/api-schema.js';
-import { DEFAULT_GUARDRAIL_KEY, guardrailKeySchema } from '../../../shared/guardrail-catalog.js';
+import {
+  DEFAULT_GUARDRAIL_KEYS,
+  guardrailKeySchema,
+  guardrailPolicyKeysSchema,
+} from '../../../shared/guardrail-catalog.js';
 import { DEFAULT_MODEL_KEY, MODEL_KEYS } from '../../../shared/model-catalog.js';
 
 export const CONFIG_KEY = 'APP_CONFIG';
@@ -17,7 +21,7 @@ export function defaultConfig(): AdminConfig {
     defaultModelKey: DEFAULT_MODEL_KEY,
     enabledModelKeys: [...MODEL_KEYS],
     defaultSystemPrompt: DEFAULT_SYSTEM_PROMPT,
-    requiredGuardrailKey: DEFAULT_GUARDRAIL_KEY,
+    requiredGuardrailKeys: [...DEFAULT_GUARDRAIL_KEYS],
     updatedAt: new Date(0).toISOString(),
     updatedBy: 'system',
   };
@@ -28,10 +32,14 @@ export async function readConfig(): Promise<AdminConfig> {
   if (!tableName) throw new Error('CONFIG_TABLE_NAME is not configured.');
   const response = await client.send(new GetCommand({ TableName: tableName, Key: { pk: CONFIG_KEY } }));
   if (!response.Item) return defaultConfig();
-  const requiredGuardrail = guardrailKeySchema.safeParse(response.Item.requiredGuardrailKey);
+  const requiredGuardrails = guardrailPolicyKeysSchema.safeParse(response.Item.requiredGuardrailKeys);
+  const legacyRequiredGuardrail = guardrailKeySchema.safeParse(response.Item.requiredGuardrailKey);
+  const migratedLegacyGuardrails = legacyRequiredGuardrail.success && legacyRequiredGuardrail.data !== 'none'
+    ? [legacyRequiredGuardrail.data]
+    : DEFAULT_GUARDRAIL_KEYS;
   return adminConfigSchema.parse({
     ...response.Item,
-    requiredGuardrailKey: requiredGuardrail.success ? requiredGuardrail.data : DEFAULT_GUARDRAIL_KEY,
+    requiredGuardrailKeys: requiredGuardrails.success ? requiredGuardrails.data : migratedLegacyGuardrails,
   });
 }
 

@@ -6,8 +6,8 @@ import {
 } from '../../shared/generation-config';
 import {
   GUARDRAIL_CATALOG,
-  GUARDRAIL_KEYS,
-  type GuardrailKey,
+  GUARDRAIL_POLICY_KEYS,
+  type GuardrailPolicyKey,
 } from '../../shared/guardrail-catalog';
 import { Dialog } from './Dialog';
 import { PromptEditor } from './PromptEditor';
@@ -16,18 +16,18 @@ interface UserSettingsDialogProps {
   open: boolean;
   value: string;
   generationConfig: GenerationConfig;
-  guardrailKey: GuardrailKey;
-  requiredGuardrailKey: GuardrailKey;
+  guardrailKeys: GuardrailPolicyKey[];
+  requiredGuardrailKeys: GuardrailPolicyKey[];
   onClose: () => void;
-  onSave: (value: string, generationConfig: GenerationConfig, guardrailKey: GuardrailKey) => void;
+  onSave: (value: string, generationConfig: GenerationConfig, guardrailKeys: GuardrailPolicyKey[]) => void;
 }
 
 export function UserSettingsDialog({
   open,
   value,
   generationConfig,
-  guardrailKey,
-  requiredGuardrailKey,
+  guardrailKeys,
+  requiredGuardrailKeys,
   onClose,
   onSave,
 }: UserSettingsDialogProps) {
@@ -35,7 +35,7 @@ export function UserSettingsDialog({
   const [temperature, setTemperature] = useState(String(generationConfig.temperature));
   const [topP, setTopP] = useState(generationConfig.topP === null ? '' : String(generationConfig.topP));
   const [maxOutputTokens, setMaxOutputTokens] = useState(String(generationConfig.maxOutputTokens));
-  const [selectedGuardrailKey, setSelectedGuardrailKey] = useState<GuardrailKey>(guardrailKey);
+  const [selectedGuardrailKeys, setSelectedGuardrailKeys] = useState<GuardrailPolicyKey[]>(guardrailKeys);
 
   const parsedGenerationConfig = generationConfigSchema.safeParse({
     temperature: temperature === '' ? undefined : Number(temperature),
@@ -48,8 +48,14 @@ export function UserSettingsDialog({
     setTemperature(String(generationConfig.temperature));
     setTopP(generationConfig.topP === null ? '' : String(generationConfig.topP));
     setMaxOutputTokens(String(generationConfig.maxOutputTokens));
-    setSelectedGuardrailKey(guardrailKey);
+    setSelectedGuardrailKeys(guardrailKeys);
     onClose();
+  }
+
+  function toggleGuardrail(key: GuardrailPolicyKey) {
+    setSelectedGuardrailKeys((current) => current.includes(key)
+      ? current.filter((item) => item !== key)
+      : [...current, key]);
   }
 
   function resetGenerationDefaults() {
@@ -68,21 +74,27 @@ export function UserSettingsDialog({
         value={draft}
         onChange={setDraft}
       />
-      <label className="field-block">
-        <span>Guardrail</span>
-        <select
-          aria-label="Guardrail"
-          value={selectedGuardrailKey}
-          onChange={(event) => setSelectedGuardrailKey(event.target.value as GuardrailKey)}
-        >
-          {GUARDRAIL_KEYS.map((key) => (
-            <option key={key} value={key}>{GUARDRAIL_CATALOG[key].label}</option>
-          ))}
-        </select>
-      </label>
-      <p className="setting-hint">{GUARDRAIL_CATALOG[selectedGuardrailKey].description}</p>
-      {requiredGuardrailKey !== 'none' && (
-        <p className="required-setting">管理者必須: {GUARDRAIL_CATALOG[requiredGuardrailKey].label}</p>
+      <fieldset className="model-fieldset guardrail-fieldset">
+        <legend>Guardrail</legend>
+        {GUARDRAIL_POLICY_KEYS.map((key) => (
+          <label className="check-row guardrail-check-row" key={key}>
+            <input
+              type="checkbox"
+              checked={selectedGuardrailKeys.includes(key)}
+              onChange={() => toggleGuardrail(key)}
+            />
+            <span>
+              <strong>{GUARDRAIL_CATALOG[key].label}</strong>
+              <small>{GUARDRAIL_CATALOG[key].description}</small>
+            </span>
+          </label>
+        ))}
+        {selectedGuardrailKeys.length === 0 && <p className="setting-hint guardrail-none">選択なし</p>}
+      </fieldset>
+      {requiredGuardrailKeys.length > 0 && (
+        <p className="required-setting">
+          管理者必須: {requiredGuardrailKeys.map((key) => GUARDRAIL_CATALOG[key].label).join(' / ')}
+        </p>
       )}
       <div className="generation-settings">
         <label className="field-block">
@@ -135,7 +147,7 @@ export function UserSettingsDialog({
           onClick={() => parsedGenerationConfig.success && onSave(
             draft,
             parsedGenerationConfig.data,
-            selectedGuardrailKey,
+            selectedGuardrailKeys,
           )}
         >
           適用

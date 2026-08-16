@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type Keyb
 import { LogOut, Send, Settings, Shield, Trash2 } from 'lucide-react';
 import type { AdminConfig, PublicConfig, UpdateAdminConfig } from '../../shared/api-schema';
 import type { GenerationConfig } from '../../shared/generation-config';
-import type { GuardrailKey } from '../../shared/guardrail-catalog';
+import type { GuardrailPolicyKey } from '../../shared/guardrail-catalog';
 import { MODEL_CATALOG, type ModelKey } from '../../shared/model-catalog';
 import { safeErrorMessage } from '../../shared/errors';
 import { getAdminConfig, streamChat, updateAdminConfig } from '../lib/api';
@@ -12,11 +12,11 @@ import {
   getBrowserSessionId,
   getConversationSessionId,
   getGenerationConfig,
-  getGuardrailKey,
+  getGuardrailKeys,
   getUserSystemPrompt,
   resetConversationSessionId,
   setGenerationConfig,
-  setGuardrailKey,
+  setGuardrailKeys,
   setUserSystemPrompt,
 } from '../lib/session';
 import { AdminSettingsDialog } from './AdminSettingsDialog';
@@ -45,7 +45,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
   const [modelKey, setModelKey] = useState<ModelKey>(config.defaultModelKey);
   const [userPrompt, setUserPrompt] = useState(getUserSystemPrompt);
   const [generationConfig, setCurrentGenerationConfig] = useState(getGenerationConfig);
-  const [guardrailKey, setCurrentGuardrailKey] = useState(getGuardrailKey);
+  const [guardrailKeys, setCurrentGuardrailKeys] = useState(getGuardrailKeys);
   const [sending, setSending] = useState(false);
   const [userSettingsOpen, setUserSettingsOpen] = useState(false);
   const [adminSettingsOpen, setAdminSettingsOpen] = useState(false);
@@ -98,7 +98,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           modelKey: selectedModelKey,
           message,
           userSystemPrompt: userPrompt,
-          guardrailKey,
+          guardrailKeys,
           timeZone: getBrowserTimeZone(),
           generationConfig,
         },
@@ -160,14 +160,14 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
   function saveUserPrompt(
     value: string,
     updatedGenerationConfig: GenerationConfig,
-    updatedGuardrailKey: GuardrailKey,
+    updatedGuardrailKeys: GuardrailPolicyKey[],
   ) {
     setUserSystemPrompt(value);
     setUserPrompt(value);
     setGenerationConfig(updatedGenerationConfig);
     setCurrentGenerationConfig(updatedGenerationConfig);
-    setGuardrailKey(updatedGuardrailKey);
-    setCurrentGuardrailKey(updatedGuardrailKey);
+    setGuardrailKeys(updatedGuardrailKeys);
+    setCurrentGuardrailKeys(updatedGuardrailKeys);
     setUserSettingsOpen(false);
   }
 
@@ -196,7 +196,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           key,
           label: MODEL_CATALOG[key].label,
         })),
-        requiredGuardrailKey: updated.requiredGuardrailKey,
+        requiredGuardrailKeys: updated.requiredGuardrailKeys,
       });
       setAdminSettingsOpen(false);
     } catch (error) {
@@ -280,8 +280,8 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
         open={userSettingsOpen}
         value={userPrompt}
         generationConfig={generationConfig}
-        guardrailKey={guardrailKey}
-        requiredGuardrailKey={config.requiredGuardrailKey}
+        guardrailKeys={guardrailKeys}
+        requiredGuardrailKeys={config.requiredGuardrailKeys}
         onClose={() => setUserSettingsOpen(false)}
         onSave={saveUserPrompt}
       />

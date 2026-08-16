@@ -143,11 +143,10 @@ function createGuardrailCatalog(scope: Construct): DeployedGuardrails {
   ];
   const profileArns = apacDestinationRegions.map((region) =>
     `arn:${stack.partition}:bedrock:${region}:${stack.account}:guardrail-profile/apac.guardrail.v1:0`);
-  const combinations: GuardrailPolicyKey[][] = [];
-  GUARDRAIL_POLICY_KEYS.forEach((first, firstIndex) => {
-    combinations.push([first]);
-    GUARDRAIL_POLICY_KEYS.slice(firstIndex + 1).forEach((second) => combinations.push([first, second]));
-  });
+  const combinations = Array.from(
+    { length: (2 ** GUARDRAIL_POLICY_KEYS.length) - 1 },
+    (_, maskIndex) => GUARDRAIL_POLICY_KEYS.filter((_, keyIndex) => ((maskIndex + 1) & (1 << keyIndex)) !== 0),
+  );
 
   const catalog: Record<string, GuardrailDeployment> = {};
   const guardrails: bedrock.CfnGuardrail[] = [];
@@ -173,9 +172,7 @@ function createGuardrailCatalog(scope: Construct): DeployedGuardrails {
       },
     );
     version.addResourceDependency(guardrail);
-    const key = policies.length === 1
-      ? effectiveGuardrailKey('none', policies[0])
-      : effectiveGuardrailKey(policies[0], policies[1]);
+    const key = effectiveGuardrailKey([], policies);
     catalog[key] = {
       guardrailId: guardrail.attrGuardrailId,
       guardrailVersion: version.attrVersion,

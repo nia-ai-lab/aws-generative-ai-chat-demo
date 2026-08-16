@@ -4,16 +4,18 @@ import {
   type GenerationConfig,
 } from '../../shared/generation-config';
 import {
-  DEFAULT_GUARDRAIL_KEY,
+  DEFAULT_GUARDRAIL_KEYS,
   guardrailKeySchema,
-  type GuardrailKey,
+  guardrailPolicyKeysSchema,
+  type GuardrailPolicyKey,
 } from '../../shared/guardrail-catalog';
 
 const BROWSER_SESSION_KEY = 'genai-chat.browser-session-id';
 const CONVERSATION_SESSION_KEY = 'genai-chat.conversation-session-id';
 const USER_PROMPT_KEY = 'genai-chat.user-system-prompt';
 const GENERATION_CONFIG_KEY = 'genai-chat.generation-config';
-const GUARDRAIL_KEY = 'genai-chat.guardrail-key';
+const GUARDRAIL_KEYS_KEY = 'genai-chat.guardrail-keys';
+const LEGACY_GUARDRAIL_KEY = 'genai-chat.guardrail-key';
 
 function getOrCreateUuid(key: string): string {
   const current = sessionStorage.getItem(key);
@@ -60,13 +62,28 @@ export function setGenerationConfig(value: GenerationConfig): void {
   sessionStorage.setItem(GENERATION_CONFIG_KEY, JSON.stringify(generationConfigSchema.parse(value)));
 }
 
-export function getGuardrailKey(): GuardrailKey {
-  const result = guardrailKeySchema.safeParse(sessionStorage.getItem(GUARDRAIL_KEY));
-  return result.success ? result.data : DEFAULT_GUARDRAIL_KEY;
+export function getGuardrailKeys(): GuardrailPolicyKey[] {
+  const stored = sessionStorage.getItem(GUARDRAIL_KEYS_KEY);
+  if (stored) {
+    try {
+      const result = guardrailPolicyKeysSchema.safeParse(JSON.parse(stored));
+      if (result.success) return result.data;
+    } catch {
+      // Fall through to the legacy value or defaults.
+    }
+  }
+  const legacy = guardrailKeySchema.safeParse(sessionStorage.getItem(LEGACY_GUARDRAIL_KEY));
+  if (legacy.success) {
+    const migrated = legacy.data === 'none' ? [...DEFAULT_GUARDRAIL_KEYS] : [legacy.data];
+    setGuardrailKeys(migrated);
+    return migrated;
+  }
+  return [...DEFAULT_GUARDRAIL_KEYS];
 }
 
-export function setGuardrailKey(value: GuardrailKey): void {
-  sessionStorage.setItem(GUARDRAIL_KEY, guardrailKeySchema.parse(value));
+export function setGuardrailKeys(value: GuardrailPolicyKey[]): void {
+  sessionStorage.setItem(GUARDRAIL_KEYS_KEY, JSON.stringify(guardrailPolicyKeysSchema.parse(value)));
+  sessionStorage.removeItem(LEGACY_GUARDRAIL_KEY);
 }
 
 export function clearBrowserSession(): void {
@@ -74,5 +91,6 @@ export function clearBrowserSession(): void {
   sessionStorage.removeItem(CONVERSATION_SESSION_KEY);
   sessionStorage.removeItem(USER_PROMPT_KEY);
   sessionStorage.removeItem(GENERATION_CONFIG_KEY);
-  sessionStorage.removeItem(GUARDRAIL_KEY);
+  sessionStorage.removeItem(GUARDRAIL_KEYS_KEY);
+  sessionStorage.removeItem(LEGACY_GUARDRAIL_KEY);
 }

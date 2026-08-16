@@ -79,8 +79,8 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
   let temperature: number | undefined;
   let topP: number | null | undefined;
   let maxOutputTokens: number | undefined;
-  let requiredGuardrailKey = 'none';
-  let participantGuardrailKey = 'none';
+  let requiredGuardrailKeys: string[] = [];
+  let participantGuardrailKeys: string[] = [];
   let effectiveGuardrailKey = 'none';
   let activeStream: LambdaResponseStream | undefined;
 
@@ -94,9 +94,9 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
     selectedModel = input.modelKey;
     ({ temperature, topP, maxOutputTokens } = input.generationConfig);
     userMessage = input.message;
-    requiredGuardrailKey = config.requiredGuardrailKey;
-    participantGuardrailKey = input.guardrailKey;
-    const guardrail = resolveGuardrail(config.requiredGuardrailKey, input.guardrailKey);
+    requiredGuardrailKeys = config.requiredGuardrailKeys;
+    participantGuardrailKeys = input.guardrailKeys;
+    const guardrail = resolveGuardrail(config.requiredGuardrailKeys, input.guardrailKeys);
     effectiveGuardrailKey = guardrail.effectiveGuardrailKey;
     auditActorId = actorId(auth.sub, input.browserSessionId);
     const isolatedRuntimeSessionId = runtimeSessionId(auditActorId, input.conversationSessionId);
@@ -176,8 +176,8 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       temperature,
       topP,
       maxOutputTokens,
-      requiredGuardrailKey,
-      participantGuardrailKey,
+      requiredGuardrailKeys,
+      participantGuardrailKeys,
       effectiveGuardrailKey,
       latencyMs: Date.now() - startedAt,
       result: 'SUCCESS',
@@ -210,8 +210,8 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       temperature,
       topP,
       maxOutputTokens,
-      requiredGuardrailKey,
-      participantGuardrailKey,
+      requiredGuardrailKeys,
+      participantGuardrailKeys,
       effectiveGuardrailKey,
       latencyMs: Date.now() - startedAt,
       result: code,

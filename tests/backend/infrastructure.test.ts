@@ -80,8 +80,8 @@ describe('application infrastructure', () => {
   });
 
   it('creates versioned opt-in guardrail presets and their combinations', () => {
-    template.resourceCountIs('AWS::Bedrock::Guardrail', 15);
-    template.resourceCountIs('AWS::Bedrock::GuardrailVersion', 15);
+    template.resourceCountIs('AWS::Bedrock::Guardrail', 31);
+    template.resourceCountIs('AWS::Bedrock::GuardrailVersion', 31);
     template.hasResourceProperties('AWS::Bedrock::GuardrailVersion', {
       Description: 'Immutable training definition v2',
     });

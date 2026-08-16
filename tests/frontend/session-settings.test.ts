@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_GENERATION_CONFIG } from '../../shared/generation-config';
 import {
   getGenerationConfig,
-  getGuardrailKey,
+  getGuardrailKeys,
   setGenerationConfig,
-  setGuardrailKey,
+  setGuardrailKeys,
 } from '../../src/lib/session';
 
 describe('participant generation settings', () => {
@@ -25,10 +25,16 @@ describe('participant generation settings', () => {
     expect(getGenerationConfig()).toEqual(DEFAULT_GENERATION_CONFIG);
   });
 
-  it('stores a predefined guardrail only in the current browser session', () => {
-    expect(getGuardrailKey()).toBe('none');
-    setGuardrailKey('blocked-word-pineapple');
-    expect(getGuardrailKey()).toBe('blocked-word-pineapple');
+  it('stores multiple predefined guardrails only in the current browser session', () => {
+    expect(getGuardrailKeys()).toEqual([]);
+    setGuardrailKeys(['blocked-word-pineapple', 'denied-topic-travel']);
+    expect(getGuardrailKeys()).toEqual(['blocked-word-pineapple', 'denied-topic-travel']);
     expect(localStorage.length).toBe(0);
+  });
+
+  it('migrates the former single-selection session value', () => {
+    sessionStorage.setItem('genai-chat.guardrail-key', 'content-safety');
+    expect(getGuardrailKeys()).toEqual(['content-safety']);
+    expect(sessionStorage.getItem('genai-chat.guardrail-key')).toBeNull();
   });
 });

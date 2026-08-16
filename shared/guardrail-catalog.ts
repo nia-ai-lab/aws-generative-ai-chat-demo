@@ -9,11 +9,22 @@ export const GUARDRAIL_KEYS = [
   'blocked-word-pineapple',
 ] as const;
 
-export const GUARDRAIL_POLICY_KEYS = GUARDRAIL_KEYS.filter((key) => key !== 'none');
+export const GUARDRAIL_POLICY_KEYS = [
+  'content-safety',
+  'prompt-attack',
+  'sensitive-information',
+  'denied-topic-travel',
+  'blocked-word-pineapple',
+] as const;
+
 export type GuardrailKey = (typeof GUARDRAIL_KEYS)[number];
-export type GuardrailPolicyKey = Exclude<GuardrailKey, 'none'>;
+export type GuardrailPolicyKey = (typeof GUARDRAIL_POLICY_KEYS)[number];
 export const guardrailKeySchema = z.enum(GUARDRAIL_KEYS);
-export const DEFAULT_GUARDRAIL_KEY: GuardrailKey = 'none';
+export const guardrailPolicyKeySchema = z.enum(GUARDRAIL_POLICY_KEYS);
+export const guardrailPolicyKeysSchema = z.array(guardrailPolicyKeySchema)
+  .max(GUARDRAIL_POLICY_KEYS.length)
+  .refine((keys) => new Set(keys).size === keys.length, 'Guardrail policies must be unique.');
+export const DEFAULT_GUARDRAIL_KEYS: GuardrailPolicyKey[] = [];
 
 export const GUARDRAIL_CATALOG: Record<GuardrailKey, {
   label: string;
@@ -46,18 +57,17 @@ export const GUARDRAIL_CATALOG: Record<GuardrailKey, {
 };
 
 export function activeGuardrailPolicies(
-  requiredGuardrailKey: GuardrailKey,
-  participantGuardrailKey: GuardrailKey,
+  requiredGuardrailKeys: readonly GuardrailPolicyKey[],
+  participantGuardrailKeys: readonly GuardrailPolicyKey[],
 ): GuardrailPolicyKey[] {
-  return GUARDRAIL_POLICY_KEYS.filter(
-    (key): key is GuardrailPolicyKey => key === requiredGuardrailKey || key === participantGuardrailKey,
-  );
+  const selected = new Set([...requiredGuardrailKeys, ...participantGuardrailKeys]);
+  return GUARDRAIL_POLICY_KEYS.filter((key) => selected.has(key));
 }
 
 export function effectiveGuardrailKey(
-  requiredGuardrailKey: GuardrailKey,
-  participantGuardrailKey: GuardrailKey,
+  requiredGuardrailKeys: readonly GuardrailPolicyKey[],
+  participantGuardrailKeys: readonly GuardrailPolicyKey[],
 ): string {
-  const policies = activeGuardrailPolicies(requiredGuardrailKey, participantGuardrailKey);
-  return policies.length === 0 ? DEFAULT_GUARDRAIL_KEY : policies.join('+');
+  const policies = activeGuardrailPolicies(requiredGuardrailKeys, participantGuardrailKeys);
+  return policies.length === 0 ? 'none' : policies.join('+');
 }

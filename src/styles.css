@@ -249,6 +249,12 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
 .model-fieldset { display: grid; gap: 10px; margin: 0 0 20px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
 .check-row { display: flex; align-items: center; gap: 9px; font-size: 14px; }
 .check-row input { width: 17px; height: 17px; }
+.guardrail-check-row { align-items: flex-start; }
+.guardrail-check-row input { flex: 0 0 auto; margin-top: 2px; }
+.guardrail-check-row span { display: grid; gap: 2px; }
+.guardrail-check-row strong { font-size: 13px; }
+.guardrail-check-row small { color: var(--muted); font-size: 11px; line-height: 1.4; }
+.guardrail-none { margin: 2px 0 0; }
 .prompt-variable-tools { display: flex; flex-wrap: wrap; gap: 7px; margin-top: -1px; }
 .prompt-variable-tools button {
   min-height: 30px;

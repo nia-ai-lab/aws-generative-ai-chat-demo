@@ -179,7 +179,7 @@ TypeScript で実装する。読み取りと管理更新は関数またはハン
     "nova-pro"
   ],
   "defaultSystemPrompt": "",
-  "requiredGuardrailKey": "none",
+  "requiredGuardrailKeys": [],
   "updatedAt": "2026-08-16T00:00:00Z",
   "updatedBy": "cognito-sub"
 }
@@ -286,7 +286,7 @@ AgentCore Runtime は `runtimeSessionId` ごとに専用 microVM を割り当て
 
 ### 3.11 Bedrock Guardrails
 
-受講者と管理者は、次の論理プリセットから一つを選択する。初期値は双方とも `none` とし、アプリ標準ではGuardrailを自動適用しない。
+受講者と管理者は、次の論理プリセットをチェックボックスでゼロ個以上選択する。初期値は双方とも空配列とし、アプリ標準ではGuardrailを自動適用しない。受講者の選択はブラウザタブの `sessionStorage` に保存されるため、同じCognito IDを使用する別の受講者には波及しない。管理者の必須選択だけはDynamoDBに保存され、全受講者へ共通適用する。
 
 | 論理キー | 表示名 | 主な設定 |
 |---|---|---|
@@ -297,7 +297,7 @@ AgentCore Runtime は `runtimeSessionId` ごとに専用 microVM を割り当て
 | `denied-topic-travel` | 禁止トピック: 旅行 | 旅行、観光、宿泊、旅程を拒否 |
 | `blocked-word-pineapple` | 禁止ワード: pineapple | Word filters対応言語の英単語を使う完全一致フィルター |
 
-Converse/ConverseStreamの `guardrailConfig` は一つのGuardrail IDを指定するため、CDKは5個の単独プリセットと10個の二者組み合わせ、合計15個のGuardrailを作成する。Chat Lambdaは管理者キーと受講者キーをカタログ順に正規化し、対応するIDと番号付きバージョンをAgentへ渡す。クライアント指定のIDやバージョンは受け付けない。
+Converse/ConverseStreamの `guardrailConfig` は一つのGuardrail IDしか指定できない。このためCDKは、5ポリシーの空集合を除く全組み合わせ `2^5 - 1 = 31` 個のGuardrailを作成する。Chat Lambdaは管理者選択と受講者選択の和集合をカタログ順に正規化し、対応するIDと番号付きバージョンをAgentへ渡す。選択が空ならGuardrailを渡さない。クライアント指定のIDやバージョンは受け付けない。
 
 日本語評価のためコンテンツフィルター、Prompt Attack、Denied TopicsはStandard tierを使用し、`apac.guardrail.v1:0`でクロスリージョン評価する。Word filtersは日本語に対応しないため、教材語句には対応言語である英語の `pineapple` を使用する。モデル呼び出しには `trace=disabled` と同期ストリーム評価を指定する。`guardContent`による部分評価や単独の`ApplyGuardrail` APIではなく、会話全体を保護する `guardrailConfig` を使用する。
 
@@ -416,7 +416,7 @@ sequenceDiagram
     {"key": "nova-2-lite", "label": "Nova 2 Lite"},
     {"key": "nova-pro", "label": "Nova Pro"}
   ],
-  "requiredGuardrailKey": "none"
+  "requiredGuardrailKeys": []
 }
 ```
 
@@ -434,7 +434,7 @@ sequenceDiagram
   "modelKey": "claude-sonnet-5",
   "message": "生成AIとは何ですか？",
   "userSystemPrompt": "親しみやすい先生として説明してください。現在日時は $DATETIME です。",
-  "guardrailKey": "denied-topic-travel",
+  "guardrailKeys": ["denied-topic-travel", "blocked-word-pineapple"],
   "timeZone": "Asia/Tokyo",
   "generationConfig": {
     "temperature": 0.3,
@@ -461,7 +461,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
 
 ### 6.3 `GET /admin/config`
 
-管理者にだけ、`configVersion`、有効モデル、既定モデル、アプリ既定プロンプト、必須Guardrail論理キー、更新日時、更新者を返す。Lambda は `cognito:groups` に `Admins` が含まれることを必ず検証する。
+管理者にだけ、`configVersion`、有効モデル、既定モデル、アプリ既定プロンプト、必須Guardrail論理キー配列、更新日時、更新者を返す。Lambda は `cognito:groups` に `Admins` が含まれることを必ず検証する。
 
 ### 6.4 `PUT /admin/config`
 
@@ -473,7 +473,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
   "defaultModelKey": "nova-2-lite",
   "enabledModelKeys": ["claude-sonnet-5", "nova-2-lite"],
   "defaultSystemPrompt": "",
-  "requiredGuardrailKey": "content-safety"
+  "requiredGuardrailKeys": ["content-safety", "prompt-attack"]
 }
 ```
 
@@ -519,7 +519,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
 - Temperature（初期値0.3）
 - Top P（初期状態はモデル既定）
 - 最大アウトプットトークン（初期値1,024）
-- Guardrail（初期値なし。事前定義プリセットから選択）
+- Guardrail（初期値なし。事前定義プリセットをチェックボックスで複数選択）
 - 管理者必須 Guardrail がある場合は解除不能であることを表示
 - デフォルトに戻す（Temperature、Top P、最大アウトプットトークンを初期値へ戻し、ペルソナは維持。「適用」で確定）
 - 適用
@@ -531,7 +531,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
 - `$DATETIME` / `$TIMEZONE` 挿入ボタン
 - 有効モデル
 - 既定モデル
-- 必須 Guardrail（初期値なし）
+- 必須 Guardrail（初期値なし。チェックボックスで複数選択）
 - 保存
 - キャンセル
 
@@ -664,7 +664,7 @@ IME 変換中は `preventDefault()` も送信処理も実行しない。送信�
 ### 11.2 Guardrail 初期方針
 
 - デフォルトは適用なしとし、受講者が機能差を比較できるようにする
-- 受講者は事前定義プリセットをブラウザセッション単位で選択する
+- 受講者は事前定義プリセットをブラウザセッション単位で複数選択する
 - 管理者はDynamoDBに必須プリセットを保存し、受講者は解除できない
 - IDと番号付きバージョンはサーバー側カタログからだけ解決する
 - PIIデモには実在しない情報だけを使用する

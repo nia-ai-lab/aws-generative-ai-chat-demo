@@ -2,8 +2,8 @@ import { useState } from 'react';
 import type { AdminConfig, UpdateAdminConfig } from '../../shared/api-schema';
 import {
   GUARDRAIL_CATALOG,
-  GUARDRAIL_KEYS,
-  type GuardrailKey,
+  GUARDRAIL_POLICY_KEYS,
+  type GuardrailPolicyKey,
 } from '../../shared/guardrail-catalog';
 import { MODEL_CATALOG, MODEL_KEYS, type ModelKey } from '../../shared/model-catalog';
 import { Dialog } from './Dialog';
@@ -38,7 +38,7 @@ function AdminSettingsForm({ config, onClose, onSave }: {
   const [prompt, setPrompt] = useState(config.defaultSystemPrompt);
   const [enabled, setEnabled] = useState<ModelKey[]>(config.enabledModelKeys);
   const [defaultModel, setDefaultModel] = useState<ModelKey>(config.defaultModelKey);
-  const [requiredGuardrailKey, setRequiredGuardrailKey] = useState<GuardrailKey>(config.requiredGuardrailKey);
+  const [requiredGuardrailKeys, setRequiredGuardrailKeys] = useState<GuardrailPolicyKey[]>(config.requiredGuardrailKeys);
   const [saving, setSaving] = useState(false);
 
   function toggleModel(key: ModelKey) {
@@ -51,6 +51,12 @@ function AdminSettingsForm({ config, onClose, onSave }: {
     });
   }
 
+  function toggleRequiredGuardrail(key: GuardrailPolicyKey) {
+    setRequiredGuardrailKeys((current) => current.includes(key)
+      ? current.filter((item) => item !== key)
+      : [...current, key]);
+  }
+
   async function save() {
     setSaving(true);
     try {
@@ -59,7 +65,7 @@ function AdminSettingsForm({ config, onClose, onSave }: {
         defaultModelKey: defaultModel,
         enabledModelKeys: enabled,
         defaultSystemPrompt: prompt,
-        requiredGuardrailKey,
+        requiredGuardrailKeys,
       });
     } finally {
       setSaving(false);
@@ -90,19 +96,23 @@ function AdminSettingsForm({ config, onClose, onSave }: {
         value={prompt}
         onChange={setPrompt}
       />
-      <label className="field-block">
-        <span>必須Guardrail</span>
-        <select
-          aria-label="必須Guardrail"
-          value={requiredGuardrailKey}
-          onChange={(event) => setRequiredGuardrailKey(event.target.value as GuardrailKey)}
-        >
-          {GUARDRAIL_KEYS.map((key) => (
-            <option key={key} value={key}>{GUARDRAIL_CATALOG[key].label}</option>
-          ))}
-        </select>
-      </label>
-      <p className="setting-hint">{GUARDRAIL_CATALOG[requiredGuardrailKey].description}</p>
+      <fieldset className="model-fieldset guardrail-fieldset">
+        <legend>必須Guardrail</legend>
+        {GUARDRAIL_POLICY_KEYS.map((key) => (
+          <label className="check-row guardrail-check-row" key={key}>
+            <input
+              type="checkbox"
+              checked={requiredGuardrailKeys.includes(key)}
+              onChange={() => toggleRequiredGuardrail(key)}
+            />
+            <span>
+              <strong>{GUARDRAIL_CATALOG[key].label}</strong>
+              <small>{GUARDRAIL_CATALOG[key].description}</small>
+            </span>
+          </label>
+        ))}
+        {requiredGuardrailKeys.length === 0 && <p className="setting-hint guardrail-none">選択なし</p>}
+      </fieldset>
       <div className="dialog-actions">
         <button type="button" className="secondary-button" onClick={onClose}>キャンセル</button>
         <button type="button" className="primary-button" disabled={saving} onClick={save}>

@@ -5,6 +5,8 @@ import {
   getGuardrailKeys,
   setGenerationConfig,
   setGuardrailKeys,
+  getToolKeys,
+  setToolKeys,
 } from '../../src/lib/session';
 
 describe('participant generation settings', () => {
@@ -36,5 +38,12 @@ describe('participant generation settings', () => {
     sessionStorage.setItem('genai-chat.guardrail-key', 'content-safety');
     expect(getGuardrailKeys()).toEqual(['content-safety']);
     expect(sessionStorage.getItem('genai-chat.guardrail-key')).toBeNull();
+  });
+
+  it('keeps tool opt-ins off by default and isolated to sessionStorage', () => {
+    expect(getToolKeys()).toEqual([]);
+    setToolKeys(['web-search', 'rag']);
+    expect(getToolKeys()).toEqual(['web-search', 'rag']);
+    expect(localStorage.length).toBe(0);
   });
 });

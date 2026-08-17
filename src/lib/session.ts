@@ -9,6 +9,11 @@ import {
   guardrailPolicyKeysSchema,
   type GuardrailPolicyKey,
 } from '../../shared/guardrail-catalog';
+import {
+  DEFAULT_PARTICIPANT_TOOL_KEYS,
+  toolKeysSchema,
+  type ToolKey,
+} from '../../shared/tool-catalog';
 
 const BROWSER_SESSION_KEY = 'genai-chat.browser-session-id';
 const CONVERSATION_SESSION_KEY = 'genai-chat.conversation-session-id';
@@ -16,6 +21,7 @@ const USER_PROMPT_KEY = 'genai-chat.user-system-prompt';
 const GENERATION_CONFIG_KEY = 'genai-chat.generation-config';
 const GUARDRAIL_KEYS_KEY = 'genai-chat.guardrail-keys';
 const LEGACY_GUARDRAIL_KEY = 'genai-chat.guardrail-key';
+const TOOL_KEYS_KEY = 'genai-chat.tool-keys';
 
 function getOrCreateUuid(key: string): string {
   const current = sessionStorage.getItem(key);
@@ -86,6 +92,21 @@ export function setGuardrailKeys(value: GuardrailPolicyKey[]): void {
   sessionStorage.removeItem(LEGACY_GUARDRAIL_KEY);
 }
 
+export function getToolKeys(): ToolKey[] {
+  const stored = sessionStorage.getItem(TOOL_KEYS_KEY);
+  if (!stored) return [...DEFAULT_PARTICIPANT_TOOL_KEYS];
+  try {
+    const result = toolKeysSchema.safeParse(JSON.parse(stored));
+    return result.success ? result.data : [...DEFAULT_PARTICIPANT_TOOL_KEYS];
+  } catch {
+    return [...DEFAULT_PARTICIPANT_TOOL_KEYS];
+  }
+}
+
+export function setToolKeys(value: ToolKey[]): void {
+  sessionStorage.setItem(TOOL_KEYS_KEY, JSON.stringify(toolKeysSchema.parse(value)));
+}
+
 export function clearBrowserSession(): void {
   sessionStorage.removeItem(BROWSER_SESSION_KEY);
   sessionStorage.removeItem(CONVERSATION_SESSION_KEY);
@@ -93,4 +114,5 @@ export function clearBrowserSession(): void {
   sessionStorage.removeItem(GENERATION_CONFIG_KEY);
   sessionStorage.removeItem(GUARDRAIL_KEYS_KEY);
   sessionStorage.removeItem(LEGACY_GUARDRAIL_KEY);
+  sessionStorage.removeItem(TOOL_KEYS_KEY);
 }

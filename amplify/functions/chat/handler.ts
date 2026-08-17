@@ -8,6 +8,7 @@ import { readConfig } from '../shared/config.js';
 import { corsHeaders } from '../shared/http.js';
 import { resolveGuardrail } from '../shared/guardrails.js';
 import { actorId, runtimeSessionId } from '../shared/session-isolation.js';
+import { estimateWebSearchCostJpy } from '../../../shared/tool-pricing.js';
 
 interface LambdaResponseStream {
   write(chunk: string | Uint8Array): boolean;
@@ -85,6 +86,8 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
   let participantGuardrailKeys: string[] = [];
   let effectiveGuardrailKey = 'none';
   let activeStream: LambdaResponseStream | undefined;
+  let requestedToolKeys: string[] = [];
+  let effectiveToolKeys: string[] = [];
 
   try {
     const auth = getAuthContext(event);
@@ -98,6 +101,8 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
     userMessage = input.message;
     requiredGuardrailKeys = config.requiredGuardrailKeys;
     participantGuardrailKeys = input.guardrailKeys;
+    requestedToolKeys = input.toolKeys;
+    effectiveToolKeys = input.toolKeys.filter((key) => config.enabledToolKeys.includes(key));
     const guardrail = resolveGuardrail(config.requiredGuardrailKeys, input.guardrailKeys);
     effectiveGuardrailKey = guardrail.effectiveGuardrailKey;
     auditActorId = actorId(auth.sub, input.browserSessionId);
@@ -133,6 +138,8 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
         generationConfig: input.generationConfig,
         guardrailId: guardrail.guardrailId,
         guardrailVersion: guardrail.guardrailVersion,
+        webSearchEnabled: effectiveToolKeys.includes('web-search'),
+        ragEnabled: effectiveToolKeys.includes('rag'),
       }),
       signal: AbortSignal.timeout(85_000),
     });
@@ -164,9 +171,17 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
           config.usdToJpyRate,
           new Date(startedAtIso),
         );
+        const toolUsage = agentEvent.toolUsage ? {
+          ...agentEvent.toolUsage,
+          webSearchCostJpy: estimateWebSearchCostJpy(
+            agentEvent.toolUsage.webSearchQueries,
+            config.usdToJpyRate,
+          ),
+        } : undefined;
         writeSse(stream, {
           ...agentEvent,
           usage: agentEvent.usage ? { ...agentEvent.usage, estimate: modelCostEstimate } : undefined,
+          toolUsage,
         });
         continue;
       }
@@ -194,6 +209,8 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       requiredGuardrailKeys,
       participantGuardrailKeys,
       effectiveGuardrailKey,
+      requestedToolKeys,
+      effectiveToolKeys,
       latencyMs: Date.now() - startedAt,
       result: 'SUCCESS',
     }));
@@ -229,6 +246,8 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       requiredGuardrailKeys,
       participantGuardrailKeys,
       effectiveGuardrailKey,
+      requestedToolKeys,
+      effectiveToolKeys,
       latencyMs: Date.now() - startedAt,
       result: code,
       errorType: error instanceof Error ? error.name : 'UnknownError',

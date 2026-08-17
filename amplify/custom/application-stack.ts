@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   ArnFormat,
+  CustomResource,
   Duration,
   RemovalPolicy,
   Stack,
@@ -15,6 +16,9 @@ import {
   aws_lambda as lambda,
   aws_lambda_nodejs as lambdaNode,
   aws_logs as logs,
+  aws_s3 as s3,
+  aws_s3_deployment as s3deploy,
+  aws_s3vectors as s3vectors,
 } from 'aws-cdk-lib';
 import * as customResources from 'aws-cdk-lib/custom-resources';
 import type { Construct } from 'constructs';
@@ -26,6 +30,8 @@ import {
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(currentDirectory, '../..');
+const RAG_DOCUMENT_VERSION = 1;
+const WEB_SEARCH_REGION = 'us-east-1';
 
 interface ApplicationStackProps {
   userPool: cognito.IUserPool;
@@ -302,6 +308,245 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     removalPolicy: RemovalPolicy.DESTROY,
   });
 
+  const knowledgeSourceBucket = new s3.Bucket(scope, 'KnowledgeSourceBucket', {
+    blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+    encryption: s3.BucketEncryption.S3_MANAGED,
+    enforceSSL: true,
+    autoDeleteObjects: true,
+    removalPolicy: RemovalPolicy.DESTROY,
+  });
+  const knowledgeDocuments = new s3deploy.BucketDeployment(scope, 'KnowledgeDocuments', {
+    sources: [s3deploy.Source.asset(path.join(repositoryRoot, 'knowledge-base'), { exclude: ['README.md'] })],
+    destinationBucket: knowledgeSourceBucket,
+    destinationKeyPrefix: 'policies',
+    prune: true,
+    retainOnDelete: false,
+  });
+
+  const vectorBucket = new s3vectors.CfnVectorBucket(scope, 'KnowledgeVectorBucket', {
+    encryptionConfiguration: { sseType: 'AES256' },
+    tags: [{ key: 'Application', value: 'GenerativeAIChat' }],
+  });
+  vectorBucket.applyRemovalPolicy(RemovalPolicy.DESTROY);
+  const vectorIndex = new s3vectors.CfnIndex(scope, 'KnowledgeVectorIndex', {
+    vectorBucketArn: vectorBucket.attrVectorBucketArn,
+    indexName: 'company-policies',
+    dataType: 'float32',
+    dimension: 1_024,
+    distanceMetric: 'cosine',
+    metadataConfiguration: {
+      nonFilterableMetadataKeys: ['AMAZON_BEDROCK_TEXT', 'AMAZON_BEDROCK_METADATA'],
+    },
+    tags: [{ key: 'Application', value: 'GenerativeAIChat' }],
+  });
+  vectorIndex.applyRemovalPolicy(RemovalPolicy.DESTROY);
+  vectorIndex.addResourceDependency(vectorBucket);
+
+  const knowledgeRole = new iam.Role(scope, 'KnowledgeBaseRole', {
+    assumedBy: new iam.ServicePrincipal('bedrock.amazonaws.com', {
+      conditions: {
+        StringEquals: { 'aws:SourceAccount': stack.account },
+        ArnLike: { 'aws:SourceArn': `arn:${stack.partition}:bedrock:${stack.region}:${stack.account}:knowledge-base/*` },
+      },
+    }),
+    description: 'Reads fictional policy documents and writes their embeddings to S3 Vectors.',
+  });
+  const knowledgePolicy = new iam.Policy(scope, 'KnowledgeBasePolicy', {
+    statements: [
+      new iam.PolicyStatement({
+        actions: ['bedrock:InvokeModel'],
+        resources: [`arn:${stack.partition}:bedrock:${stack.region}::foundation-model/amazon.titan-embed-text-v2:0`],
+      }),
+      new iam.PolicyStatement({
+        actions: ['s3:ListBucket'],
+        resources: [knowledgeSourceBucket.bucketArn],
+      }),
+      new iam.PolicyStatement({
+        actions: ['s3:GetObject'],
+        resources: [knowledgeSourceBucket.arnForObjects('policies/*')],
+      }),
+      new iam.PolicyStatement({
+        actions: [
+          's3vectors:PutVectors',
+          's3vectors:GetVectors',
+          's3vectors:DeleteVectors',
+          's3vectors:QueryVectors',
+          's3vectors:GetIndex',
+        ],
+        resources: [vectorIndex.attrIndexArn],
+      }),
+    ],
+  });
+  knowledgeRole.attachInlinePolicy(knowledgePolicy);
+
+  const knowledgeBase = new bedrock.CfnKnowledgeBase(scope, 'CompanyPolicyKnowledgeBase', {
+    name: 'GenerativeAIChatCompanyPolicies',
+    description: 'Fictional Japanese company policies for the RAG training demo.',
+    roleArn: knowledgeRole.roleArn,
+    knowledgeBaseConfiguration: {
+      type: 'VECTOR',
+      vectorKnowledgeBaseConfiguration: {
+        embeddingModelArn: `arn:${stack.partition}:bedrock:${stack.region}::foundation-model/amazon.titan-embed-text-v2:0`,
+        embeddingModelConfiguration: {
+          bedrockEmbeddingModelConfiguration: { dimensions: 1_024, embeddingDataType: 'FLOAT32' },
+        },
+      },
+    },
+    storageConfiguration: {
+      type: 'S3_VECTORS',
+      s3VectorsConfiguration: {
+        vectorBucketArn: vectorBucket.attrVectorBucketArn,
+        indexArn: vectorIndex.attrIndexArn,
+      },
+    },
+    tags: { Application: 'GenerativeAIChat', DataClass: 'FictionalTrainingMaterial' },
+  });
+  knowledgeBase.applyRemovalPolicy(RemovalPolicy.DESTROY);
+  knowledgeBase.node.addDependency(knowledgePolicy, vectorIndex);
+
+  const knowledgeDataSource = new bedrock.CfnDataSource(scope, 'CompanyPolicyDataSource', {
+    name: 'FictionalCompanyPolicies',
+    description: 'Japanese fictional policies deployed with the public sample application.',
+    knowledgeBaseId: knowledgeBase.attrKnowledgeBaseId,
+    dataDeletionPolicy: 'DELETE',
+    dataSourceConfiguration: {
+      type: 'S3',
+      s3Configuration: {
+        bucketArn: knowledgeSourceBucket.bucketArn,
+        bucketOwnerAccountId: stack.account,
+        inclusionPrefixes: ['policies/'],
+      },
+    },
+    vectorIngestionConfiguration: {
+      chunkingConfiguration: {
+        chunkingStrategy: 'FIXED_SIZE',
+        fixedSizeChunkingConfiguration: { maxTokens: 300, overlapPercentage: 20 },
+      },
+    },
+  });
+  knowledgeDataSource.applyRemovalPolicy(RemovalPolicy.DESTROY);
+  knowledgeDataSource.node.addDependency(knowledgeBase);
+
+  const ingestion = new customResources.AwsCustomResource(scope, 'KnowledgeBaseIngestion', {
+    onCreate: {
+      service: 'BedrockAgent',
+      action: 'startIngestionJob',
+      parameters: {
+        knowledgeBaseId: knowledgeBase.attrKnowledgeBaseId,
+        dataSourceId: knowledgeDataSource.attrDataSourceId,
+        description: `Deployment sync v${RAG_DOCUMENT_VERSION}`,
+      },
+      physicalResourceId: customResources.PhysicalResourceId.fromResponse('ingestionJob.ingestionJobId'),
+    },
+    onUpdate: {
+      service: 'BedrockAgent',
+      action: 'startIngestionJob',
+      parameters: {
+        knowledgeBaseId: knowledgeBase.attrKnowledgeBaseId,
+        dataSourceId: knowledgeDataSource.attrDataSourceId,
+        description: `Deployment sync v${RAG_DOCUMENT_VERSION}`,
+      },
+      physicalResourceId: customResources.PhysicalResourceId.fromResponse('ingestionJob.ingestionJobId'),
+    },
+    policy: customResources.AwsCustomResourcePolicy.fromStatements([new iam.PolicyStatement({
+      actions: ['bedrock:StartIngestionJob'],
+      resources: ['*'],
+    })]),
+    installLatestAwsSdk: false,
+    timeout: Duration.minutes(2),
+  });
+  ingestion.node.addDependency(knowledgeDocuments, knowledgeDataSource);
+
+  const gatewayRole = new iam.Role(scope, 'WebSearchGatewayRole', {
+    assumedBy: new iam.ServicePrincipal('bedrock-agentcore.amazonaws.com', {
+      conditions: {
+        StringEquals: { 'aws:SourceAccount': stack.account },
+        ArnLike: { 'aws:SourceArn': `arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:*` },
+      },
+    }),
+    description: 'Invokes the managed AgentCore Web Search connector.',
+  });
+  const gatewayExecutionPolicy = new iam.Policy(scope, 'WebSearchGatewayExecutionPolicy', {
+    statements: [
+      new iam.PolicyStatement({
+        actions: ['bedrock-agentcore:InvokeGateway'],
+        resources: [`arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:gateway/*`],
+      }),
+      new iam.PolicyStatement({
+        actions: ['bedrock-agentcore:InvokeWebSearch'],
+        resources: [`arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:aws:tool/web-search.v1`],
+      }),
+    ],
+  });
+  gatewayExecutionPolicy.attachToRole(gatewayRole);
+
+  const gatewayProviderEnvironment = { TARGET_REGION: WEB_SEARCH_REGION };
+  const gatewayOnEvent = new lambdaNode.NodejsFunction(scope, 'WebSearchGatewayOnEvent', {
+    functionName: 'generative-ai-chat-web-search-provider',
+    entry: path.join(repositoryRoot, 'amplify/functions/gateway-provider/handler.ts'),
+    handler: 'onEvent',
+    runtime: lambda.Runtime.NODEJS_22_X,
+    architecture: lambda.Architecture.ARM_64,
+    memorySize: 256,
+    timeout: Duration.seconds(60),
+    environment: gatewayProviderEnvironment,
+    logGroup: functionLogGroup(scope, 'WebSearchGatewayOnEventLogs', 'generative-ai-chat-web-search-provider', logKey),
+    bundling: { minify: true, sourceMap: true, target: 'node22', bundleAwsSDK: true },
+  });
+  const gatewayIsComplete = new lambdaNode.NodejsFunction(scope, 'WebSearchGatewayIsComplete', {
+    functionName: 'generative-ai-chat-web-search-provider-check',
+    entry: path.join(repositoryRoot, 'amplify/functions/gateway-provider/handler.ts'),
+    handler: 'isComplete',
+    runtime: lambda.Runtime.NODEJS_22_X,
+    architecture: lambda.Architecture.ARM_64,
+    memorySize: 256,
+    timeout: Duration.seconds(60),
+    environment: gatewayProviderEnvironment,
+    logGroup: functionLogGroup(scope, 'WebSearchGatewayIsCompleteLogs', 'generative-ai-chat-web-search-provider-check', logKey),
+    bundling: { minify: true, sourceMap: true, target: 'node22', bundleAwsSDK: true },
+  });
+  for (const providerFunction of [gatewayOnEvent, gatewayIsComplete]) {
+    providerFunction.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'bedrock-agentcore:CreateGateway',
+        'bedrock-agentcore:GetGateway',
+        'bedrock-agentcore:ListGateways',
+        'bedrock-agentcore:DeleteGateway',
+        'bedrock-agentcore:CreateGatewayTarget',
+        'bedrock-agentcore:GetGatewayTarget',
+        'bedrock-agentcore:ListGatewayTargets',
+        'bedrock-agentcore:DeleteGatewayTarget',
+      ],
+      resources: ['*'],
+    }));
+    providerFunction.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['iam:PassRole'],
+      resources: [gatewayRole.roleArn],
+      conditions: { StringEquals: { 'iam:PassedToService': 'bedrock-agentcore.amazonaws.com' } },
+    }));
+  }
+  const gatewayProviderFrameworkLogs = new logs.LogGroup(scope, 'WebSearchGatewayProviderFrameworkLogs', {
+    encryptionKey: logKey,
+    retention: logs.RetentionDays.ONE_WEEK,
+    removalPolicy: RemovalPolicy.DESTROY,
+  });
+  const gatewayProvider = new customResources.Provider(scope, 'WebSearchGatewayProvider', {
+    onEventHandler: gatewayOnEvent,
+    isCompleteHandler: gatewayIsComplete,
+    queryInterval: Duration.seconds(5),
+    totalTimeout: Duration.minutes(10),
+    logGroup: gatewayProviderFrameworkLogs,
+  });
+  const webSearchGateway = new CustomResource(scope, 'WebSearchGateway', {
+    serviceToken: gatewayProvider.serviceToken,
+    properties: {
+      GatewayName: 'generative-ai-chat-web-search',
+      GatewayRoleArn: gatewayRole.roleArn,
+    },
+  });
+  webSearchGateway.node.addDependency(gatewayExecutionPolicy);
+  const webSearchGatewayUrl = webSearchGateway.getAttString('GatewayUrl');
+
   const deployedGuardrails = createGuardrailCatalog(scope);
 
   const memory = new agentcore.CfnMemory(scope, 'ShortTermMemory', {
@@ -328,6 +573,14 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
       `arn:${stack.partition}:bedrock:*::foundation-model/amazon.nova-micro*`,
       `arn:${stack.partition}:bedrock:*::foundation-model/amazon.nova-pro*`,
     ],
+  }));
+  runtimeRole.addToPolicy(new iam.PolicyStatement({
+    actions: ['bedrock:Retrieve'],
+    resources: [`arn:${stack.partition}:bedrock:${stack.region}:${stack.account}:knowledge-base/${knowledgeBase.attrKnowledgeBaseId}`],
+  }));
+  runtimeRole.addToPolicy(new iam.PolicyStatement({
+    actions: ['bedrock-agentcore:InvokeGateway'],
+    resources: [`arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:gateway/*`],
   }));
   runtimeRole.addToPolicy(new iam.PolicyStatement({
     actions: ['bedrock:ApplyGuardrail'],
@@ -381,6 +634,9 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     ),
     environmentVariables: {
       MEMORY_ID: memory.attrMemoryId,
+      KNOWLEDGE_BASE_ID: knowledgeBase.attrKnowledgeBaseId,
+      WEB_SEARCH_GATEWAY_URL: webSearchGatewayUrl,
+      WEB_SEARCH_GATEWAY_REGION: WEB_SEARCH_REGION,
     },
     lifecycleConfiguration: {
       idleRuntimeSessionTimeout: Duration.minutes(15),
@@ -388,7 +644,7 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     },
     tracingEnabled: true,
   });
-  runtime.node.addDependency(memory, ...deployedGuardrails.guardrails);
+  runtime.node.addDependency(memory, knowledgeBase, webSearchGateway, ...deployedGuardrails.guardrails);
   runtime.addEndpoint('LiveEndpoint', {
     version: runtime.agentRuntimeVersion ?? '1',
     description: 'Live training endpoint.',
@@ -513,5 +769,7 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     userPoolClientId: props.userPoolClient.userPoolClientId,
     runtimeArn: runtime.agentRuntimeArn,
     memoryId: memory.attrMemoryId,
+    knowledgeBaseId: knowledgeBase.attrKnowledgeBaseId,
+    webSearchGatewayUrl,
   };
 }

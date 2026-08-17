@@ -23,6 +23,7 @@ describe('UsageCostDetails', () => {
             scope: 'MODEL_INFERENCE_ONLY',
           },
         }}
+        toolUsage={{ webSearchQueries: 1, ragRetrievals: 1, webSearchCostJpy: 1.05075 }}
       />,
     );
 
@@ -34,6 +35,8 @@ describe('UsageCostDetails', () => {
     expect(html).toContain('¥0.0189');
     expect(html).toContain('1 USD = ¥150');
     expect(html).toContain('モデル推論のみ');
+    expect(html).toContain('Web検索 1回 / 約¥1.0508');
+    expect(html).toContain('RAG検索 1回');
   });
 
   it('renders nothing when a cost estimate is unavailable', () => {

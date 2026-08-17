@@ -11,6 +11,7 @@ import {
 } from '../../shared/guardrail-catalog';
 import { Dialog } from './Dialog';
 import { PromptEditor } from './PromptEditor';
+import { TOOL_CATALOG, type ToolKey } from '../../shared/tool-catalog';
 
 interface UserSettingsDialogProps {
   open: boolean;
@@ -18,8 +19,15 @@ interface UserSettingsDialogProps {
   generationConfig: GenerationConfig;
   guardrailKeys: GuardrailPolicyKey[];
   requiredGuardrailKeys: GuardrailPolicyKey[];
+  toolKeys: ToolKey[];
+  availableToolKeys: ToolKey[];
   onClose: () => void;
-  onSave: (value: string, generationConfig: GenerationConfig, guardrailKeys: GuardrailPolicyKey[]) => void;
+  onSave: (
+    value: string,
+    generationConfig: GenerationConfig,
+    guardrailKeys: GuardrailPolicyKey[],
+    toolKeys: ToolKey[],
+  ) => void;
 }
 
 export function UserSettingsDialog({
@@ -28,6 +36,8 @@ export function UserSettingsDialog({
   generationConfig,
   guardrailKeys,
   requiredGuardrailKeys,
+  toolKeys,
+  availableToolKeys,
   onClose,
   onSave,
 }: UserSettingsDialogProps) {
@@ -36,6 +46,7 @@ export function UserSettingsDialog({
   const [topP, setTopP] = useState(generationConfig.topP === null ? '' : String(generationConfig.topP));
   const [maxOutputTokens, setMaxOutputTokens] = useState(String(generationConfig.maxOutputTokens));
   const [selectedGuardrailKeys, setSelectedGuardrailKeys] = useState<GuardrailPolicyKey[]>(guardrailKeys);
+  const [selectedToolKeys, setSelectedToolKeys] = useState<ToolKey[]>(toolKeys);
 
   const parsedGenerationConfig = generationConfigSchema.safeParse({
     temperature: temperature === '' ? undefined : Number(temperature),
@@ -49,7 +60,14 @@ export function UserSettingsDialog({
     setTopP(generationConfig.topP === null ? '' : String(generationConfig.topP));
     setMaxOutputTokens(String(generationConfig.maxOutputTokens));
     setSelectedGuardrailKeys(guardrailKeys);
+    setSelectedToolKeys(toolKeys);
     onClose();
+  }
+
+  function toggleTool(key: ToolKey) {
+    setSelectedToolKeys((current) => current.includes(key)
+      ? current.filter((item) => item !== key)
+      : [...current, key]);
   }
 
   function toggleGuardrail(key: GuardrailPolicyKey) {
@@ -74,6 +92,24 @@ export function UserSettingsDialog({
         value={draft}
         onChange={setDraft}
       />
+      {availableToolKeys.length > 0 && (
+        <fieldset className="model-fieldset guardrail-fieldset">
+          <legend>ツール</legend>
+          {availableToolKeys.map((key) => (
+            <label className="check-row guardrail-check-row" key={key}>
+              <input
+                type="checkbox"
+                checked={selectedToolKeys.includes(key)}
+                onChange={() => toggleTool(key)}
+              />
+              <span>
+                <strong>{TOOL_CATALOG[key].label}</strong>
+                <small>{TOOL_CATALOG[key].description}</small>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
       <fieldset className="model-fieldset guardrail-fieldset">
         <legend>Guardrail</legend>
         {GUARDRAIL_POLICY_KEYS.map((key) => (
@@ -147,6 +183,7 @@ export function UserSettingsDialog({
             draft,
             parsedGenerationConfig.data,
             selectedGuardrailKeys,
+            selectedToolKeys.filter((key) => availableToolKeys.includes(key)),
           )}
         >
           適用

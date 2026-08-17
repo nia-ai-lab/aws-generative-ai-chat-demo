@@ -6,7 +6,8 @@
 - Node.js 22.18.0、npm 10.8.2、Python 3.12、zip、GitHub CLI が利用できること
 - デプロイ先は `ap-northeast-1` であること
 - GitHub リポジトリを Amplify Hosting に接続できる権限があること
-- AgentCore、Bedrock、Cognito、API Gateway、Lambda、DynamoDB、KMS、CloudWatch、IAM を作成できるデプロイロールがあること
+- AgentCore、Bedrock Knowledge Bases、S3/S3 Vectors、Cognito、API Gateway、Lambda、DynamoDB、KMS、CloudWatch、IAM を作成できるデプロイロールがあること
+- 東京リージョンから米国東部（バージニア北部）のAgentCore Gatewayを作成・呼び出しできるOrganizations/SCP設定であること
 
 実AWSアカウントID、パスワード、トークンはリポジトリや `.env` に保存しない。
 
@@ -45,7 +46,7 @@ python3 -m venv agent/.venv
 agent/.venv/bin/python -m pip install uv==0.12.5
 agent/.venv/bin/uv pip install --python agent/.venv/bin/python --editable 'agent[dev]'
 agent/.venv/bin/ruff check agent
-agent/.venv/bin/mypy --config-file agent/pyproject.toml agent/main.py agent/graph.py agent/prompts.py agent/schemas.py
+agent/.venv/bin/mypy --config-file agent/pyproject.toml agent
 (cd agent && .venv/bin/pytest -q)
 ```
 
@@ -81,6 +82,11 @@ unset STUDENT_USERNAME STUDENT_PASSWORD ADMIN_USERNAME ADMIN_PASSWORD
 12. 対象ロググループの保持期間が7日、KMS暗号化が有効である。
 13. AI応答末尾の閉じた「利用量・モデル推論料金（概算）」を展開し、Input / Outputトークン数、円換算額、モデル単価、換算レートが表示される。
 14. 管理者がUSD/JPY換算レートを変更すると、以後の応答の概算料金へ反映される。表示額が基盤モデル推論だけの概算であることも確認する。
+15. 利用者設定でRAGをオンにし、「国内出張の宿泊費上限は？」と質問すると、架空社内規定に基づく回答とRAG参照元が表示される。
+16. RAGをオフにして同じ質問を行い、架空規定の固有金額を根拠なく再現しないことを確認する。
+17. Web検索をオンにして最新情報を尋ねると、必要な場合だけWeb検索が実行され、回答末尾の「参照元」にタイトルとリンクが表示される。
+18. 受講者側で両ツールをオフにすると実行回数が0になり、別タブで同じ共有IDへログインしてもツール選択が引き継がれない。
+19. 管理者がツールを無効化すると、受講者設定から非表示となり、古いブラウザ設定やAPI直接指定でも実行されない。
 
 ## 6. トレーニング終了後の削除
 
@@ -94,4 +100,4 @@ export CONFIRM_DESTROY='delete-generative-ai-chat'
 ./scripts/destroy.sh
 ```
 
-削除後はCloudFormation、AgentCore Runtime/Memory、Cognito、API Gateway、Lambda、DynamoDB、CloudWatch Logs、KMSにアプリ固有リソースが残っていないことを確認する。共有のCDK bootstrapリソースは削除しない。
+削除後はCloudFormation、AgentCore Runtime/Memory、米国東部のWeb Search Gateway、Bedrock Knowledge Base、S3/S3 Vectors、Cognito、API Gateway、Lambda、DynamoDB、CloudWatch Logs、KMSにアプリ固有リソースが残っていないことを確認する。共有のCDK bootstrapリソースは削除しない。

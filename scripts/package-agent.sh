@@ -34,6 +34,8 @@ cp "$PROJECT_DIR/agent/main.py" "$PACKAGE_DIR/main.py"
 cp "$PROJECT_DIR/agent/graph.py" "$PACKAGE_DIR/graph.py"
 cp "$PROJECT_DIR/agent/prompts.py" "$PACKAGE_DIR/prompts.py"
 cp "$PROJECT_DIR/agent/schemas.py" "$PACKAGE_DIR/schemas.py"
+cp "$PROJECT_DIR/agent/rag.py" "$PACKAGE_DIR/rag.py"
+cp "$PROJECT_DIR/agent/web_search.py" "$PACKAGE_DIR/web_search.py"
 
 find "$PACKAGE_DIR" -type d -name '__pycache__' -prune -exec rm -rf -- {} +
 rm -f -- "$OUTPUT_FILE"

@@ -2,7 +2,7 @@
 
 ## 1. 設計概要
 
-本システムは、Amplify Hosting 上の React SPA、Cognito User Pool、API Gateway REST API、TypeScript Lambda、DynamoDB、Amazon Bedrock AgentCore Runtime/Memory、Amazon Bedrock 基盤モデルで構成する。
+本システムは、Amplify Hosting 上の React SPA、Cognito User Pool、API Gateway REST API、TypeScript Lambda、DynamoDB、Amazon Bedrock AgentCore Runtime/Memory/Gateway、Bedrock Knowledge Bases、S3 Vectors、Amazon Bedrock 基盤モデルで構成する。
 
 アプリケーションとインフラは TypeScript で統一し、AI Agent のみ Python 3.12 と LangGraph で実装する。Agent は AgentCore Runtime の Direct Code Deployment を使用して ZIP アーカイブとして配備する。
 
@@ -18,6 +18,8 @@
 | メモリ | AgentCore Memory の短期メモリのみ | セッション内の会話継続と、セッション間の分離を両立するため |
 | 認証 | Cognito Access Token + Lambda Authorizer | 独自ログイン画面のSRP認証を維持し、API GatewayとAgentCore Runtimeで同じ利用者トークンを検証するため |
 | 管理設定 | DynamoDB 単一設定レコード | 小規模で高可用、管理不要、条件付き更新が可能なため |
+| Web検索 | AgentCore Gateway + Web Search connector | APIキー不要のフルマネージドMCPツールで、検索元情報を保持できるため |
+| RAG | Bedrock Knowledge Bases + S3 Vectors | OpenSearchを常時稼働させず、少量・低頻度の教材検索をサーバーレスで実現するため |
 | IaC | Amplify Gen 2 + CDK TypeScript | フロントとカスタム AWS リソースを一つのデプロイに統合するため |
 
 ## 2. 全体アーキテクチャ
@@ -37,6 +39,10 @@ flowchart LR
     GR["Bedrock Guardrails"]
     FM["Amazon Bedrock Models<br>Claude / Nova"]
     CW["CloudWatch Logs / Traces"]
+    GW["AgentCore Gateway<br>Web Search / us-east-1"]
+    KB["Bedrock Knowledge Bases<br>ap-northeast-1"]
+    SV["S3 Vectors"]
+    DS["S3 架空社内規定"]
 
     U --> H
     H --> C
@@ -51,6 +57,10 @@ flowchart LR
     AR <--> AM
     AR --> GR
     AR --> FM
+    AR -->|"SigV4 / 必要時のみ"| GW
+    AR -->|"Retrieve / RAGオン時"| KB
+    KB --> SV
+    KB --> DS
     G --> CW
     CH --> CW
     CF --> CW
@@ -65,7 +75,7 @@ flowchart LR
 3. Lambda Authorizer は検証済みの `sub` と `cognito:groups` だけを authorizer context に渡し、業務 Lambda はその値でアプリケーションロールを検証する。
 4. Chat Lambda は受信した JWT を AgentCore Runtime の HTTPS エンドポイントへそのまま Bearer Token として転送する。
 5. AgentCore Runtime は Cognito OIDC discovery URL と App Client ID を使い、同じ JWT を再検証する。
-6. AgentCore Runtime の実行ロールだけが Bedrock モデル、Guardrail、Memory にアクセスできる。
+6. AgentCore Runtime の実行ロールだけが Bedrockモデル、Guardrail、Memory、Knowledge Base、Web Search Gatewayにアクセスできる。
 
 ## 3. コンポーネント設計
 
@@ -89,10 +99,11 @@ flowchart LR
 | `conversationSessionId` | `sessionStorage` | クリアまたはタブを閉じるまで |
 | 利用者プロンプト | `sessionStorage` | ログアウトまたはタブを閉じるまで |
 | 受講者 Guardrail | `sessionStorage` | ログアウトまたはタブを閉じるまで |
+| 受講者ツール選択 | `sessionStorage` | ログアウトまたはタブを閉じるまで |
 | 画面上の会話 | React メモリ | リロード、クリア、ログアウトまで |
 | 管理者設定 | 永続保存しない。API から再取得 | 画面表示中のみ |
 
-利用者設定はデータベースへの保存禁止をセキュリティ境界とはしない。重要なのは、共有 Cognito ユーザーだけをキーにせず、アプリが発行・検証する `browserSessionId` を分離キーへ必ず含めることである。現行実装は再読み込みや Runtime の再作成にも強い `sessionStorage` を正本とし、利用者プロンプト、推論設定、受講者 Guardrail を各チャット要求で渡す。将来 AgentCore Runtime または AgentCore Memory に保持する場合も、この分離キー設計を維持する。
+利用者設定はデータベースへの保存禁止をセキュリティ境界とはしない。重要なのは、共有 Cognito ユーザーだけをキーにせず、アプリが発行・検証する `browserSessionId` を分離キーへ必ず含めることである。現行実装は再読み込みや Runtime の再作成にも強い `sessionStorage` を正本とし、利用者プロンプト、推論設定、受講者 Guardrail、ツール選択を各チャット要求で渡す。将来 AgentCore Runtime または AgentCore Memory に保持する場合も、この分離キー設計を維持する。
 
 ### 3.2 Cognito
 
@@ -134,10 +145,10 @@ TypeScript / Node.js 22 で実装し、次を担当する。
 
 1. API Gateway の Lambda authorizer context を検証する。
 2. リクエスト本文をスキーマ検証する。
-3. DynamoDB から現在の管理設定と必須 Guardrail を取得する。
+3. DynamoDB から現在の管理設定、必須 Guardrail、利用可能ツールを取得する。
 4. 選択モデルが有効モデルに含まれることを検証する。
 5. 管理者必須 Guardrail と受講者 Guardrail から実効 Guardrail を解決する。
-6. `actorId` を導出する。
+6. 管理者が無効化したツール指定を除外し、`actorId` を導出する。
 7. Cognito JWT を AgentCore Runtime に転送する。
 8. AgentCore の応答ストリームを SSE に正規化してブラウザへ転送する。
 9. リクエスト結果、レイテンシー、実効 Guardrail を構造化ログに記録する。
@@ -148,7 +159,7 @@ Lambda は `awslambda.streamifyResponse` を使用する。AgentCore Runtime へ
 
 TypeScript で実装する。読み取りと管理更新は関数またはハンドラーを分け、最小権限を付与する。
 
-- 一般設定取得: クライアントに必要な表示名、モデルキー、既定モデル、必須 Guardrail の論理キーだけを返す。管理者プロンプト本文や Guardrail ID は返さない。
+- 一般設定取得: クライアントに必要な表示名、モデルキー、既定モデル、必須 Guardrail、利用可能ツールの論理キーだけを返す。管理者プロンプト本文や Guardrail ID は返さない。
 - 管理設定取得・更新: `Admins` グループを必須とし、完全な設定を扱う。
 - 更新は DynamoDB の `configVersion` 条件式を使う。
 - 更新成功後に `configVersion` を 1 増加させる。
@@ -181,6 +192,7 @@ TypeScript で実装する。読み取りと管理更新は関数またはハン
   ],
   "defaultSystemPrompt": "",
   "requiredGuardrailKeys": [],
+  "enabledToolKeys": ["web-search", "rag"],
   "usdToJpyRate": 150,
   "updatedAt": "2026-08-16T00:00:00Z",
   "updatedBy": "cognito-sub"
@@ -201,7 +213,7 @@ TypeScript で実装する。読み取りと管理更新は関数またはハン
 | 認証 | Custom JWT Authorizer |
 | セッション | `runtimeSessionId = SHA-256(actorId + ':' + conversationSessionId)` |
 | ネットワーク | 初期は PUBLIC。外部公開は AgentCore authorizer で保護する |
-| 実行ロール | Bedrock、Guardrails、AgentCore Memory、CloudWatch の必要最小限 |
+| 実行ロール | Bedrock、Guardrails、AgentCore Memory、Knowledge Base、Web Search Gateway、CloudWatch の必要最小限 |
 
 CloudFormation の次のリソース型を CDK の L1 または `CfnResource` から使用する。これらは 2026-08-16 時点で `ap-northeast-1` の CloudFormation Registry に存在することを確認済みである。
 
@@ -219,19 +231,19 @@ Runtime 設定:
 
 ### 3.8 LangGraph Agent
 
-Agent は単純なチャットを主目的とし、不要なツール実行ループは持たせない。LangGraph を使う理由は、モデル呼び出し、メモリ、Guardrail、将来の教育用ノード追加を明示的なグラフとして管理するためである。
+Agentは通常チャットを基本とし、受講者がWeb検索を明示的にオンにした場合だけReAct型のツールループを有効にする。RAGはツール選択とは別に、オンの場合はモデル呼び出し前に決定的に1回検索する。LangGraphでモデル、ツール、短期メモリを一つのグラフとして管理する。
 
 ```mermaid
 flowchart LR
-    V["入力検証"] --> GI["Guardrail Input"]
-    GI -->|許可| PC["Prompt Composition"]
-    GI -->|拒否| BR["Blocked Response"]
-    PC --> MM["Model Invocation"]
-    MM --> GO["Guardrail Output"]
-    GO -->|許可| SR["Stream Response"]
-    GO -->|拒否・修正| BR
+    V["入力検証"] --> R{"RAGオン?"}
+    R -->|Yes| KB["Knowledge Base Retrieve"]
+    R -->|No| MM["Model Invocation"]
+    KB --> MM
+    MM --> W{"Web tool call?"}
+    W -->|Yes / 最大2回| WS["AgentCore Web Search"]
+    WS --> MM
+    W -->|No| SR["Stream Response"]
     SR --> CP["Checkpoint / Audit"]
-    BR --> CP
 ```
 
 推奨パッケージ:
@@ -242,6 +254,18 @@ flowchart LR
 - `bedrock-agentcore`
 - `pydantic`
 - AWS Distro for OpenTelemetry の AgentCore 対応パッケージ
+
+#### Web検索
+
+Web Search connectorは提供リージョンである`us-east-1`にAgentCore Gatewayとして作成する。東京のAgentCore Runtimeは実行ロールの一時認証情報を用い、MCP Streamable HTTP要求をサービス名`bedrock-agentcore`、リージョン`us-east-1`でSigV4署名する。APIキー、固定クレデンシャル、受講者JWTはGatewayへ渡さない。
+
+受講者の初期選択はオフとする。オンの場合もモデルが最新情報を必要と判断したときだけ`web_search`を呼び出す。1回答の上限は2検索、1検索の結果上限は5件とする。connectorが返すタイトル、URL、抜粋、公開日を保持し、回答本文とは別の参照元欄に表示する。
+
+#### RAG
+
+東京リージョンにS3データソース、Bedrock Knowledge Base、Titan Text Embeddings V2（1,024次元）、S3 Vectorsを作成する。OpenSearch ServiceとOpenSearch Serverlessは使用しない。文書は公開リポジトリ内の架空企業「蒼空フロンティア株式会社」の日本語社内規定だけを対象とする。
+
+受講者がRAGをオンにした各メッセージで`Retrieve`を1回呼び出し、上位4チャンクをモデルの一時参考情報へ追加する。取得チャンクは命令ではなくデータとして扱い、チャンク中の命令文を実行しない旨をモデルへ伝える。取得した文書名と抜粋は信頼済み参照元として表示し、会話履歴やDynamoDBへ利用者設定として保存しない。
 
 モデル呼び出しには出力上限を明示し、未指定の最大値を利用しない。
 
@@ -540,6 +564,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 - 応答待ち表示: `AI Thinking...`。最初のSSE `delta`受信時に消去し、以降は応答を逐次表示する
 - AI応答表示: GitHub Flavored Markdown。生HTMLは解釈せず、外部リンクは別タブで安全に開く
 - 利用量・料金表示: AI応答ごとに初期状態で閉じた領域を置き、Input / Outputトークン数、各料金、合計、単価、USD/JPY換算レート、料金確認日を表示する。基盤モデル推論だけの概算である旨を併記する
+- 参照元表示: Web検索またはRAGを使用した回答では、初期状態で閉じた領域に検索元タイトル、リンクまたは文書名、抜粋を表示する
 - 入力領域: 自動拡張 textarea、送信ボタン、クリアボタン
 
 #### 利用者設定ダイアログ
@@ -551,6 +576,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 - 最大アウトプットトークン（初期値1,024）
 - Guardrail（初期値なし。事前定義プリセットをチェックボックスで複数選択）
 - 管理者必須 Guardrail がある場合は解除不能であることを表示
+- Web検索、RAG（社内規定検索）。初期値は両方オフで、管理者が許可した項目だけを表示
 - デフォルトに戻す（Temperature、Top P、最大アウトプットトークンを初期値へ戻し、ペルソナは維持。「適用」で確定）
 - 適用
 - キャンセル
@@ -562,6 +588,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 - 有効モデル
 - 既定モデル
 - 必須 Guardrail（初期値なし。チェックボックスで複数選択）
+- 利用可能なツール（Web検索、RAG）
 - USD/JPY換算レート（初期値150、1–1,000）
 - 保存
 - キャンセル
@@ -597,6 +624,7 @@ IME 変換中は `preventDefault()` も送信処理も実行しない。送信�
 | チャット | 可 | 可 | API Gateway + Lambda + AgentCore |
 | 利用者プロンプト設定 | 可 | 可 | 現行はブラウザ。将来バックエンド保持時も browser session 単位で分離 |
 | 受講者 Guardrail 選択 | 可 | 可 | ブラウザ保存、Chat Lambdaで論理キーを検証 |
+| Web検索・RAG選択 | 可 | 可 | ブラウザ保存、Chat Lambdaで管理者許可リストを適用 |
 | 管理設定取得 | 不可 | 可 | Lambda `cognito:groups` |
 | 管理設定更新 | 不可 | 可 | Lambda `cognito:groups` |
 | CloudWatch Logs 閲覧 | 不可 | AWS 管理者のみ | IAM |
@@ -625,13 +653,21 @@ IME 変換中は `preventDefault()` も送信処理も実行しない。送信�
 - 対象推論プロファイルと基盤モデルへの `bedrock:InvokeModel`、`bedrock:InvokeModelWithResponseStream`
 - 対象 Guardrail とAPAC Guardrailプロファイルへの `bedrock:ApplyGuardrail`
 - 対象 AgentCore Memory の event/checkpoint 操作
+- 対象Knowledge Baseへの`bedrock:Retrieve`
+- 米国東部の対象AgentCore Gatewayへの`bedrock-agentcore:InvokeGateway`
 - AgentCore Observability と専用ロググループへの出力
 - 他の DynamoDB、S3、Lambda、Secrets Manager へのアクセスは付与しない
 
-### 9.4 Deployment role
+### 9.4 Web Search Gateway role
+
+- 対象Gatewayへの`bedrock-agentcore:InvokeGateway`
+- AWS管理Web Search toolへの`bedrock-agentcore:InvokeWebSearch`
+- `aws:SourceAccount`と`aws:SourceArn`を信頼ポリシーで限定する
+
+### 9.5 Deployment role
 
 - Amplify のデプロイロールから CloudFormation/CDK デプロイを実行する。
-- AgentCore、Cognito、API Gateway、Lambda、DynamoDB、CloudWatch、KMS、IAM role pass に必要な権限を、アプリの命名プレフィックスで制限する。
+- AgentCore、Bedrock Knowledge Bases、S3/S3 Vectors、Cognito、API Gateway、Lambda、DynamoDB、CloudWatch、KMS、IAM role pass に必要な権限を、アプリの命名プレフィックスで制限する。
 - `iam:PassRole` は AgentCore と Lambda の対象実行ロールだけに限定し、`iam:PassedToService` 条件を使用する。
 
 ## 10. ログ・監視設計

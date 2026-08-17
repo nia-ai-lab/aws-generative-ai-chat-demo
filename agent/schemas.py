@@ -26,6 +26,8 @@ class ChatInvocation(BaseModel):
     generationConfig: GenerationConfig
     guardrailId: str = Field(default="", max_length=64)
     guardrailVersion: str = Field(default="", max_length=16)
+    webSearchEnabled: bool = False
+    ragEnabled: bool = False
 
     @model_validator(mode="after")
     def validate_guardrail_pair(self) -> "ChatInvocation":

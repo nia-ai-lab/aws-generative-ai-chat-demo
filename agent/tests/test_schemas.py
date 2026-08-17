@@ -28,6 +28,8 @@ def valid_invocation() -> dict[str, object]:
 def test_runtime_session_id_is_accepted() -> None:
     invocation = ChatInvocation.model_validate(valid_invocation())
     assert invocation.runtimeSessionId == "b" * 64
+    assert invocation.webSearchEnabled is False
+    assert invocation.ragEnabled is False
 
 
 def test_runtime_session_id_must_be_server_derived_hash() -> None:

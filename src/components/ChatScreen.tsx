@@ -1,10 +1,17 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { LogOut, Send, Settings, Shield, Trash2 } from 'lucide-react';
-import type { AdminConfig, PublicConfig, UpdateAdminConfig } from '../../shared/api-schema';
+import type {
+  AdminConfig,
+  PublicConfig,
+  ToolUsage,
+  TrustedSource,
+  UpdateAdminConfig,
+} from '../../shared/api-schema';
 import type { GenerationConfig } from '../../shared/generation-config';
 import type { GuardrailPolicyKey } from '../../shared/guardrail-catalog';
 import { MODEL_CATALOG, type ModelKey } from '../../shared/model-catalog';
 import type { ModelUsage } from '../../shared/model-pricing';
+import type { ToolKey } from '../../shared/tool-catalog';
 import { safeErrorMessage } from '../../shared/errors';
 import { getAdminConfig, streamChat, updateAdminConfig } from '../lib/api';
 import { shouldSendOnKeyDown } from '../lib/keyboard';
@@ -14,15 +21,18 @@ import {
   getConversationSessionId,
   getGenerationConfig,
   getGuardrailKeys,
+  getToolKeys,
   getUserSystemPrompt,
   resetConversationSessionId,
   setGenerationConfig,
   setGuardrailKeys,
+  setToolKeys,
   setUserSystemPrompt,
 } from '../lib/session';
 import { AdminSettingsDialog } from './AdminSettingsDialog';
 import { UserSettingsDialog } from './UserSettingsDialog';
 import { UsageCostDetails } from './UsageCostDetails';
+import { SourceDetails } from './SourceDetails';
 
 const MarkdownMessage = lazy(() => import('./MarkdownMessage'));
 
@@ -34,6 +44,8 @@ interface Message {
   error?: boolean;
   modelKey?: ModelKey;
   usage?: ModelUsage;
+  sources?: TrustedSource[];
+  toolUsage?: ToolUsage;
 }
 
 interface ChatScreenProps {
@@ -50,6 +62,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
   const [userPrompt, setUserPrompt] = useState(getUserSystemPrompt);
   const [generationConfig, setCurrentGenerationConfig] = useState(getGenerationConfig);
   const [guardrailKeys, setCurrentGuardrailKeys] = useState(getGuardrailKeys);
+  const [toolKeys, setCurrentToolKeys] = useState(getToolKeys);
   const [sending, setSending] = useState(false);
   const [userSettingsOpen, setUserSettingsOpen] = useState(false);
   const [adminSettingsOpen, setAdminSettingsOpen] = useState(false);
@@ -109,6 +122,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           message,
           userSystemPrompt: userPrompt,
           guardrailKeys,
+          toolKeys: toolKeys.filter((key) => config.availableToolKeys.includes(key)),
           timeZone: getBrowserTimeZone(),
           generationConfig,
         },
@@ -123,7 +137,13 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
         } else if (event.type === 'done') {
           terminalEventReceived = true;
           setMessages((current) => current.map((item) =>
-            item.id === assistantId ? { ...item, pending: false, usage: event.usage } : item,
+            item.id === assistantId ? {
+              ...item,
+              pending: false,
+              usage: event.usage,
+              sources: event.sources,
+              toolUsage: event.toolUsage,
+            } : item,
           ));
         } else if (event.type === 'error') {
           terminalEventReceived = true;
@@ -171,6 +191,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
     value: string,
     updatedGenerationConfig: GenerationConfig,
     updatedGuardrailKeys: GuardrailPolicyKey[],
+    updatedToolKeys: ToolKey[],
   ) {
     setUserSystemPrompt(value);
     setUserPrompt(value);
@@ -178,6 +199,8 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
     setCurrentGenerationConfig(updatedGenerationConfig);
     setGuardrailKeys(updatedGuardrailKeys);
     setCurrentGuardrailKeys(updatedGuardrailKeys);
+    setToolKeys(updatedToolKeys);
+    setCurrentToolKeys(updatedToolKeys);
     setUserSettingsOpen(false);
   }
 
@@ -207,6 +230,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           label: MODEL_CATALOG[key].label,
         })),
         requiredGuardrailKeys: updated.requiredGuardrailKeys,
+        availableToolKeys: updated.enabledToolKeys,
       });
       setAdminSettingsOpen(false);
     } catch (error) {
@@ -262,7 +286,11 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
                 <UsageCostDetails
                   modelLabel={MODEL_CATALOG[message.modelKey].label}
                   usage={message.usage}
+                  toolUsage={message.toolUsage}
                 />
+              )}
+              {message.role === 'assistant' && message.sources && (
+                <SourceDetails sources={message.sources} />
               )}
             </div>
           </article>
@@ -298,6 +326,8 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
         generationConfig={generationConfig}
         guardrailKeys={guardrailKeys}
         requiredGuardrailKeys={config.requiredGuardrailKeys}
+        toolKeys={toolKeys}
+        availableToolKeys={config.availableToolKeys}
         onClose={() => setUserSettingsOpen(false)}
         onSave={saveUserPrompt}
       />

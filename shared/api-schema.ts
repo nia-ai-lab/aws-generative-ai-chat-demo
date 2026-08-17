@@ -7,6 +7,7 @@ import {
   MIN_USD_TO_JPY_RATE,
   type ModelUsage,
 } from './model-pricing.js';
+import { toolKeysSchema } from './tool-catalog.js';
 
 const modelKeySchema = z.enum(MODEL_KEYS);
 const uuidSchema = z.string().uuid();
@@ -27,6 +28,7 @@ export const chatRequestSchema = z.object({
   message: z.string().trim().min(1).max(8_000),
   userSystemPrompt: z.string().max(4_000).default(''),
   guardrailKeys: guardrailPolicyKeysSchema.default([]),
+  toolKeys: toolKeysSchema.default([]),
   timeZone: timeZoneSchema,
   generationConfig: generationConfigSchema,
 });
@@ -38,6 +40,7 @@ export const publicConfigSchema = z.object({
   defaultModelKey: modelKeySchema,
   models: z.array(z.object({ key: modelKeySchema, label: z.string().min(1) })).min(1),
   requiredGuardrailKeys: guardrailPolicyKeysSchema,
+  availableToolKeys: toolKeysSchema,
 });
 
 export type PublicConfig = z.infer<typeof publicConfigSchema>;
@@ -48,6 +51,7 @@ export const adminConfigSchema = z.object({
   enabledModelKeys: z.array(modelKeySchema).min(1),
   defaultSystemPrompt: z.string().max(8_000),
   requiredGuardrailKeys: guardrailPolicyKeysSchema,
+  enabledToolKeys: toolKeysSchema,
   usdToJpyRate: z.number().min(MIN_USD_TO_JPY_RATE).max(MAX_USD_TO_JPY_RATE),
   updatedAt: z.string(),
   updatedBy: z.string(),
@@ -62,6 +66,7 @@ export const updateAdminConfigSchema = z
     enabledModelKeys: z.array(modelKeySchema).min(1),
     defaultSystemPrompt: z.string().trim().max(8_000),
     requiredGuardrailKeys: guardrailPolicyKeysSchema,
+    enabledToolKeys: toolKeysSchema,
     usdToJpyRate: z.number().min(MIN_USD_TO_JPY_RATE).max(MAX_USD_TO_JPY_RATE),
   })
   .superRefine((value, context) => {
@@ -83,8 +88,27 @@ export const updateAdminConfigSchema = z
 
 export type UpdateAdminConfig = z.infer<typeof updateAdminConfigSchema>;
 
+export interface TrustedSource {
+  type: 'web' | 'rag';
+  title: string;
+  uri?: string;
+  excerpt?: string;
+}
+
+export interface ToolUsage {
+  webSearchQueries: number;
+  ragRetrievals: number;
+  webSearchCostJpy?: number;
+}
+
 export type ChatStreamEvent =
   | { type: 'meta'; requestId: string; modelKey: string }
   | { type: 'delta'; text: string }
-  | { type: 'done'; finishReason: string; usage?: ModelUsage }
+  | {
+    type: 'done';
+    finishReason: string;
+    usage?: ModelUsage;
+    sources?: TrustedSource[];
+    toolUsage?: ToolUsage;
+  }
   | { type: 'error'; code: string; message: string };

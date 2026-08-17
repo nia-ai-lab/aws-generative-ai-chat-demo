@@ -107,4 +107,36 @@ describe('application infrastructure', () => {
       },
     });
   });
+
+  it('creates a serverless S3 Vectors knowledge base and deployment ingestion', () => {
+    template.resourceCountIs('AWS::S3Vectors::VectorBucket', 1);
+    template.hasResourceProperties('AWS::S3Vectors::Index', {
+      DataType: 'float32',
+      Dimension: 1024,
+      DistanceMetric: 'cosine',
+      MetadataConfiguration: {
+        NonFilterableMetadataKeys: ['AMAZON_BEDROCK_TEXT', 'AMAZON_BEDROCK_METADATA'],
+      },
+    });
+    template.hasResourceProperties('AWS::Bedrock::KnowledgeBase', {
+      KnowledgeBaseConfiguration: Match.objectLike({ Type: 'VECTOR' }),
+      StorageConfiguration: Match.objectLike({ Type: 'S3_VECTORS' }),
+    });
+    template.hasResourceProperties('AWS::Bedrock::DataSource', {
+      DataSourceConfiguration: Match.objectLike({ Type: 'S3' }),
+    });
+    expect(Object.values(template.findResources('Custom::AWS')).some((resource: any) =>
+      JSON.stringify(resource.Properties?.Create).includes('startIngestionJob'),
+    )).toBe(true);
+  });
+
+  it('provisions the cross-region managed Web Search gateway and grants Runtime invocation', () => {
+    expect(Object.values(template.findResources('AWS::CloudFormation::CustomResource')).some((resource: any) =>
+      resource.Properties?.GatewayName === 'generative-ai-chat-web-search',
+    )).toBe(true);
+    const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('bedrock-agentcore:InvokeWebSearch');
+    expect(policies).toContain('bedrock-agentcore:InvokeGateway');
+    expect(policies).toContain('us-east-1');
+  });
 });

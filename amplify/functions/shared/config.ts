@@ -8,6 +8,7 @@ import {
 } from '../../../shared/guardrail-catalog.js';
 import { DEFAULT_MODEL_KEY, MODEL_KEYS } from '../../../shared/model-catalog.js';
 import { DEFAULT_USD_TO_JPY_RATE } from '../../../shared/model-pricing.js';
+import { DEFAULT_ENABLED_TOOL_KEYS, toolKeysSchema } from '../../../shared/tool-catalog.js';
 
 export const CONFIG_KEY = 'APP_CONFIG';
 export const DEFAULT_SYSTEM_PROMPT = '';
@@ -23,6 +24,7 @@ export function defaultConfig(): AdminConfig {
     enabledModelKeys: [...MODEL_KEYS],
     defaultSystemPrompt: DEFAULT_SYSTEM_PROMPT,
     requiredGuardrailKeys: [...DEFAULT_GUARDRAIL_KEYS],
+    enabledToolKeys: [...DEFAULT_ENABLED_TOOL_KEYS],
     usdToJpyRate: DEFAULT_USD_TO_JPY_RATE,
     updatedAt: new Date(0).toISOString(),
     updatedBy: 'system',
@@ -36,12 +38,14 @@ export async function readConfig(): Promise<AdminConfig> {
   if (!response.Item) return defaultConfig();
   const requiredGuardrails = guardrailPolicyKeysSchema.safeParse(response.Item.requiredGuardrailKeys);
   const legacyRequiredGuardrail = guardrailKeySchema.safeParse(response.Item.requiredGuardrailKey);
+  const enabledTools = toolKeysSchema.safeParse(response.Item.enabledToolKeys);
   const migratedLegacyGuardrails = legacyRequiredGuardrail.success && legacyRequiredGuardrail.data !== 'none'
     ? [legacyRequiredGuardrail.data]
     : DEFAULT_GUARDRAIL_KEYS;
   return adminConfigSchema.parse({
     ...response.Item,
     requiredGuardrailKeys: requiredGuardrails.success ? requiredGuardrails.data : migratedLegacyGuardrails,
+    enabledToolKeys: enabledTools.success ? enabledTools.data : DEFAULT_ENABLED_TOOL_KEYS,
     usdToJpyRate: response.Item.usdToJpyRate ?? DEFAULT_USD_TO_JPY_RATE,
   });
 }

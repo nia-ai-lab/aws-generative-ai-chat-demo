@@ -10,6 +10,7 @@
 - [システム設計書](./docs/system-design.md)
 - [デプロイ・運用ガイド](./docs/deployment-guide.md)
 - [モジュール別デモ実施ガイド](./docs/module-demo-guide.md)
+- [Web検索・RAGデモガイド](./docs/tool-rag-demo-guide.md)
 
 ## Planned architecture
 
@@ -18,6 +19,8 @@
 - Amazon Cognito
 - Amazon API Gateway + AWS Lambda
 - Amazon Bedrock AgentCore Runtime / Memory
+- Amazon Bedrock AgentCore Gateway / Web Search
+- Amazon Bedrock Knowledge Bases + Amazon S3 Vectors
 - LangGraph Agent in Python 3.12
 - Amazon Bedrock foundation models
 - Amazon DynamoDB
@@ -34,6 +37,9 @@
 - 受講者ごとのTemperature・Top P・最大アウトプットトークン設定
 - 応答ごとのInput / Outputトークン数とモデル推論料金（日本円・概算）の折りたたみ表示
 - ブラウザセッションごとに複数選択できる事前定義Bedrock Guardrailsと、管理者が解除不能にできる必須Guardrail
+- ブラウザセッションごとにオプトインできるAgentCore Web Search（引用元表示・最大2検索）
+- 架空企業の日本語社内規定を検索するBedrock Knowledge Bases + S3 VectorsのRAG
+- 管理者によるWeb検索・RAGの利用可否設定
 - KMS暗号化された7日保持の会話監査ログ
 - Amplify Gen 2とCDK TypeScriptによる一括デプロイ
 

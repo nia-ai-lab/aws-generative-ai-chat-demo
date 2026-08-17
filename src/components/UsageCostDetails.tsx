@@ -1,8 +1,10 @@
 import type { ModelUsage } from '../../shared/model-pricing';
+import type { ToolUsage } from '../../shared/api-schema';
 
 interface UsageCostDetailsProps {
   modelLabel: string;
   usage: ModelUsage;
+  toolUsage?: ToolUsage;
 }
 
 const tokenFormatter = new Intl.NumberFormat('ja-JP');
@@ -16,7 +18,7 @@ function formatJpy(value: number): string {
   return `¥${costFormatter.format(value)}`;
 }
 
-export function UsageCostDetails({ modelLabel, usage }: UsageCostDetailsProps) {
+export function UsageCostDetails({ modelLabel, usage, toolUsage }: UsageCostDetailsProps) {
   const estimate = usage.estimate;
   if (
     !estimate
@@ -49,6 +51,17 @@ export function UsageCostDetails({ modelLabel, usage }: UsageCostDetailsProps) {
         </p>
         <p>1 USD = ¥{estimate.usdToJpyRate} / 料金確認日 {estimate.priceVerifiedAt}</p>
         <p>モデル推論のみ。実際の請求額とは異なる場合があります。</p>
+        {toolUsage && (toolUsage.webSearchQueries > 0 || toolUsage.ragRetrievals > 0) && (
+          <div className="tool-usage-summary">
+            {toolUsage.webSearchQueries > 0 && (
+              <p>
+                Web検索 {toolUsage.webSearchQueries}回
+                {toolUsage.webSearchCostJpy !== undefined && ` / 約${formatJpy(toolUsage.webSearchCostJpy)}`}
+              </p>
+            )}
+            {toolUsage.ragRetrievals > 0 && <p>RAG検索 {toolUsage.ragRetrievals}回</p>}
+          </div>
+        )}
       </div>
     </details>
   );

@@ -19,6 +19,7 @@
     "destroy": "bash scripts/destroy.sh"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-agentcore-control": "3.1111.0",
     "@aws-sdk/client-dynamodb": "3.1111.0",
     "@aws-sdk/lib-dynamodb": "3.1111.0",
     "aws-amplify": "6.20.0",

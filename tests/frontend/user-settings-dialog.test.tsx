@@ -11,6 +11,8 @@ describe('UserSettingsDialog', () => {
         generationConfig={{ temperature: 0.3, topP: null, maxOutputTokens: 1_024 }}
         guardrailKeys={['denied-topic-travel', 'blocked-word-pineapple']}
         requiredGuardrailKeys={['content-safety', 'prompt-attack']}
+        toolKeys={['rag']}
+        availableToolKeys={['web-search', 'rag']}
         onClose={() => undefined}
         onSave={() => undefined}
       />,
@@ -28,5 +30,7 @@ describe('UserSettingsDialog', () => {
     expect(html).toContain('禁止ワード: pineapple');
     expect(html).toContain('type="checkbox"');
     expect(html).toContain('管理者必須: コンテンツ保護 / プロンプト攻撃対策');
+    expect(html).toContain('Web検索');
+    expect(html).toContain('RAG（社内規定検索）');
   });
 });

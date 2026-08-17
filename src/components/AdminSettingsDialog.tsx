@@ -9,6 +9,7 @@ import { MODEL_CATALOG, MODEL_KEYS, type ModelKey } from '../../shared/model-cat
 import { MAX_USD_TO_JPY_RATE, MIN_USD_TO_JPY_RATE } from '../../shared/model-pricing';
 import { Dialog } from './Dialog';
 import { PromptEditor } from './PromptEditor';
+import { TOOL_CATALOG, TOOL_KEYS, type ToolKey } from '../../shared/tool-catalog';
 
 interface AdminSettingsDialogProps {
   open: boolean;
@@ -40,6 +41,7 @@ function AdminSettingsForm({ config, onClose, onSave }: {
   const [enabled, setEnabled] = useState<ModelKey[]>(config.enabledModelKeys);
   const [defaultModel, setDefaultModel] = useState<ModelKey>(config.defaultModelKey);
   const [requiredGuardrailKeys, setRequiredGuardrailKeys] = useState<GuardrailPolicyKey[]>(config.requiredGuardrailKeys);
+  const [enabledToolKeys, setEnabledToolKeys] = useState<ToolKey[]>(config.enabledToolKeys);
   const [usdToJpyRate, setUsdToJpyRate] = useState(String(config.usdToJpyRate));
   const [saving, setSaving] = useState(false);
   const parsedUsdToJpyRate = Number(usdToJpyRate);
@@ -63,6 +65,12 @@ function AdminSettingsForm({ config, onClose, onSave }: {
       : [...current, key]);
   }
 
+  function toggleTool(key: ToolKey) {
+    setEnabledToolKeys((current) => current.includes(key)
+      ? current.filter((item) => item !== key)
+      : [...current, key]);
+  }
+
   async function save() {
     setSaving(true);
     try {
@@ -72,6 +80,7 @@ function AdminSettingsForm({ config, onClose, onSave }: {
         enabledModelKeys: enabled,
         defaultSystemPrompt: prompt,
         requiredGuardrailKeys,
+        enabledToolKeys,
         usdToJpyRate: parsedUsdToJpyRate,
       });
     } finally {
@@ -103,6 +112,22 @@ function AdminSettingsForm({ config, onClose, onSave }: {
         value={prompt}
         onChange={setPrompt}
       />
+      <fieldset className="model-fieldset guardrail-fieldset">
+        <legend>利用可能なツール</legend>
+        {TOOL_KEYS.map((key) => (
+          <label className="check-row guardrail-check-row" key={key}>
+            <input
+              type="checkbox"
+              checked={enabledToolKeys.includes(key)}
+              onChange={() => toggleTool(key)}
+            />
+            <span>
+              <strong>{TOOL_CATALOG[key].label}</strong>
+              <small>{TOOL_CATALOG[key].description}</small>
+            </span>
+          </label>
+        ))}
+      </fieldset>
       <label className="field-block">
         <span>USD/JPY換算レート</span>
         <input

@@ -6,5 +6,6 @@ describe('default application config', () => {
     expect(defaultConfig().defaultSystemPrompt).toBe('');
     expect(defaultConfig().requiredGuardrailKeys).toEqual([]);
     expect(defaultConfig().usdToJpyRate).toBe(150);
+    expect(defaultConfig().enabledToolKeys).toEqual(['web-search', 'rag']);
   });
 });

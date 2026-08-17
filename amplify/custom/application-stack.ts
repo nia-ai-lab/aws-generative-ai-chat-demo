@@ -520,6 +520,14 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
       resources: ['*'],
     }));
     providerFunction.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'bedrock-agentcore:TagResource',
+        'bedrock-agentcore:UntagResource',
+        'bedrock-agentcore:ListTagsForResource',
+      ],
+      resources: [`arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:gateway/*`],
+    }));
+    providerFunction.addToRolePolicy(new iam.PolicyStatement({
       actions: ['iam:PassRole'],
       resources: [gatewayRole.roleArn],
       conditions: { StringEquals: { 'iam:PassedToService': 'bedrock-agentcore.amazonaws.com' } },

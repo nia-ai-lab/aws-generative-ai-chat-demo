@@ -137,6 +137,9 @@ describe('application infrastructure', () => {
     const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
     expect(policies).toContain('bedrock-agentcore:InvokeWebSearch');
     expect(policies).toContain('bedrock-agentcore:InvokeGateway');
+    expect(policies).toContain('bedrock-agentcore:TagResource');
+    expect(policies).toContain('bedrock-agentcore:UntagResource');
+    expect(policies).toContain('bedrock-agentcore:ListTagsForResource');
     expect(policies).toContain('us-east-1');
   });
 });

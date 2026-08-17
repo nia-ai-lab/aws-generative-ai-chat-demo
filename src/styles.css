@@ -199,6 +199,22 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
 .markdown-message th { background: var(--surface-soft); font-weight: 700; }
 .markdown-message input[type='checkbox'] { width: 15px; height: 15px; margin: 0 5px 0 0; vertical-align: -2px; }
 
+.thinking-details {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: normal;
+}
+.thinking-details summary {
+  width: fit-content;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+}
+.thinking-details summary:hover { color: #464742; }
+.thinking-content { max-width: 680px; padding: 10px 0 2px; color: #4e504b; font-size: 13px; }
+.thinking-content > :last-child { margin-bottom: 0; }
+
 .usage-cost-details {
   margin-top: 16px;
   padding-top: 10px;

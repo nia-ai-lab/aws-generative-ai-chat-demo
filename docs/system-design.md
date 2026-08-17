@@ -563,6 +563,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 - メッセージ領域: 利用者と AI の発言
 - 応答待ち表示: `AI Thinking...`。最初のSSE `delta`受信時に消去し、以降は応答を逐次表示する
 - AI応答表示: GitHub Flavored Markdown。生HTMLは解釈せず、外部リンクは別タブで安全に開く
+- 思考表示: モデルが`<thinking>...</thinking>`を本文へ出力した場合は、通常回答から分離して初期状態で閉じた`AI Thinking`領域にMarkdown表示する。ストリーミング途中で閉じタグが未到着でもタグ自体は表示しない
 - 利用量・料金表示: AI応答ごとに初期状態で閉じた領域を置き、Input / Outputトークン数、各料金、合計、単価、USD/JPY換算レート、料金確認日を表示する。基盤モデル推論だけの概算である旨を併記する
 - 参照元表示: Web検索またはRAGを使用した回答では、初期状態で閉じた領域に検索元タイトル、リンクまたは文書名、抜粋を表示する
 - 入力領域: 自動拡張 textarea、送信ボタン、クリアボタン

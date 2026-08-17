@@ -144,6 +144,7 @@ describe('application infrastructure', () => {
     expect(policies).toContain('bedrock-agentcore:GetWorkloadIdentity');
     expect(policies).toContain('bedrock-agentcore:DeleteWorkloadIdentity');
     expect(policies).toContain('workload-identity-directory/default');
+    expect(policies).toContain('workload-identity-directory/default/workload-identity/*');
     expect(policies).toContain('us-east-1');
   });
 });

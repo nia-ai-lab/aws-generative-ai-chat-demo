@@ -520,10 +520,14 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
       resources: ['*'],
     }));
     providerFunction.addToRolePolicy(new iam.PolicyStatement({
-      actions: [
-        'bedrock-agentcore:CreateWorkloadIdentity',
-        'bedrock-agentcore:ListWorkloadIdentities',
+      actions: ['bedrock-agentcore:CreateWorkloadIdentity'],
+      resources: [
+        `arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:workload-identity-directory/default`,
+        `arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:workload-identity-directory/default/workload-identity/*`,
       ],
+    }));
+    providerFunction.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['bedrock-agentcore:ListWorkloadIdentities'],
       resources: [
         `arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:workload-identity-directory/default`,
       ],

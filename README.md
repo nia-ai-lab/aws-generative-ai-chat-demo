@@ -9,6 +9,7 @@
 - [要件定義書](./docs/requirements-definition.md)
 - [システム設計書](./docs/system-design.md)
 - [デプロイ・運用ガイド](./docs/deployment-guide.md)
+- [モジュール別デモ実施ガイド](./docs/module-demo-guide.md)
 
 ## Planned architecture
 
@@ -26,7 +27,7 @@
 
 - Cognito Access Tokenを検証するLambda Authorizerとロールベースアクセス制御
 - React SPAのレスポンシブなチャットUIと日本語IME対応
-- Claude Sonnet 5、Nova 2 Lite、Nova Proのクロスリージョン推論
+- Claude Sonnet 5、Nova 2 Lite、Nova Micro、Nova Proのクロスリージョン推論
 - Python/LangGraphエージェントとAgentCore Memoryのセッション内短期記憶
 - 管理者によるモデル・アプリ既定プロンプト設定（空設定対応）
 - ペルソナ設定と現在日時・タイムゾーンの動的プロンプト変数

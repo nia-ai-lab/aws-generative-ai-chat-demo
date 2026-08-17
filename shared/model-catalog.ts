@@ -4,6 +4,11 @@ export const MODEL_CATALOG = {
     label: 'Claude Sonnet 5',
     inferenceProfileId: 'global.anthropic.claude-sonnet-5',
   },
+  'nova-micro': {
+    key: 'nova-micro',
+    label: 'Nova Micro',
+    inferenceProfileId: 'apac.amazon.nova-micro-v1:0',
+  },
   'nova-2-lite': {
     key: 'nova-2-lite',
     label: 'Nova 2 Lite',

@@ -24,7 +24,8 @@ describe('AdminSettingsDialog', () => {
     );
 
     expect(html).toContain('必須Guardrail');
-    expect((html.match(/type="checkbox"/g) ?? [])).toHaveLength(8);
+    expect((html.match(/type="checkbox"/g) ?? [])).toHaveLength(9);
+    expect(html).toContain('Nova Micro');
     expect(html).toContain('コンテンツ保護');
     expect(html).toContain('禁止ワード: pineapple');
   });

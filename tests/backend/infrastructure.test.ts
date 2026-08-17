@@ -71,6 +71,16 @@ describe('application infrastructure', () => {
     });
   });
 
+  it('grants Nova Micro cross-region inference access', () => {
+    const policies = Object.values(template.findResources('AWS::IAM::Policy'));
+    const runtimePolicy = policies.find((resource: any) =>
+      JSON.stringify(resource.Properties?.PolicyDocument).includes('bedrock:InvokeModelWithResponseStream'),
+    );
+    const policyDocument = JSON.stringify(runtimePolicy?.Properties?.PolicyDocument);
+    expect(policyDocument).toContain('inference-profile/apac.amazon.nova-micro-v1:0');
+    expect(policyDocument).toContain('foundation-model/amazon.nova-micro');
+  });
+
   it('enables API Gateway streaming for the chat method', () => {
     const methods = template.findResources('AWS::ApiGateway::Method');
     expect(Object.values(methods).some((resource: any) =>

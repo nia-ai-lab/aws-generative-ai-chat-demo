@@ -7,6 +7,7 @@ AWS トレーニングコース「Generative AI Essentials on AWS」で受講者
 - [要件定義書](./requirements-definition.md)
 - [システム設計書](./system-design.md)
 - [デプロイ・運用ガイド](./deployment-guide.md)
+- [モジュール別デモ実施ガイド](./module-demo-guide.md)
 
 ## 採用方針
 

@@ -176,6 +176,7 @@ TypeScript で実装する。読み取りと管理更新は関数またはハン
   "enabledModelKeys": [
     "claude-sonnet-5",
     "nova-2-lite",
+    "nova-micro",
     "nova-pro"
   ],
   "defaultSystemPrompt": "",
@@ -262,12 +263,13 @@ AgentCore Runtime は `runtimeSessionId` ごとに専用 microVM を割り当て
 
 ### 3.10 Bedrock モデル
 
-2026-08-16 に対象アカウントの `ap-northeast-1` で AWS API により ACTIVE を確認したモデルを初期カタログとする。
+2026-08-17 に対象アカウントの `ap-northeast-1` で AWS API により ACTIVE を確認したモデルを初期カタログとする。
 
 | 論理キー | 表示名 | 推論プロファイル ID | 備考 |
 |---|---|---|---|
 | `claude-sonnet-5` | Claude Sonnet 5 | `global.anthropic.claude-sonnet-5` | Global cross-region inference |
 | `nova-2-lite` | Nova 2 Lite | `jp.amazon.nova-2-lite-v1:0` | Japan geographic cross-region inference profile |
+| `nova-micro` | Nova Micro | `apac.amazon.nova-micro-v1:0` | APAC cross-region inference |
 | `nova-pro` | Nova Pro | `apac.amazon.nova-pro-v1:0` | APAC cross-region inference |
 
 モデル ARN への IAM 許可では、推論プロファイル ARNと、ルーティング先になり得る foundation model ARN の両方を許可する。モデル追加時はコードカタログ、IAM、テストを更新して再デプロイする。
@@ -414,6 +416,7 @@ sequenceDiagram
   "models": [
     {"key": "claude-sonnet-5", "label": "Claude Sonnet 5"},
     {"key": "nova-2-lite", "label": "Nova 2 Lite"},
+    {"key": "nova-micro", "label": "Nova Micro"},
     {"key": "nova-pro", "label": "Nova Pro"}
   ],
   "requiredGuardrailKeys": []
@@ -804,7 +807,7 @@ Amplify Gen 2 は TypeScript の CDK custom resources をバックエンドと�
 - 異なる `thread_id` または `actor_id` で文脈が混ざらない。
 - 管理者プロンプトと利用者ペルソナの優先順位。
 - Guardrailなし、各単独プリセット、管理者・受講者の組み合わせの許可・拒否経路。
-- 3 モデルで同じ入出力契約を満たす。
+- 4 モデルで同じ入出力契約を満たす。
 - `maxTokens` がすべてのモデル呼び出しで明示される。
 - ログに JWT が含まれない。
 
@@ -823,7 +826,7 @@ Amplify Gen 2 は TypeScript の CDK custom resources をバックエンドと�
 1. AWS にログインし、アカウントとリージョンを確認する。
 2. Amplify の対象 branch をデプロイする。
 3. Cognito の受講者共有ユーザーと管理者ユーザーを作成・確認する。
-4. 3 モデルのアクセスと推論プロファイルを確認する。
+4. 4 モデルのアクセスと推論プロファイルを確認する。
 5. 管理画面で既定プロンプト、有効モデル、必須 Guardrail が「なし」であることを確認する。
 6. 2 ブラウザで会話分離テストを行う。
 7. CloudWatch Logs への監査記録を確認する。
@@ -848,7 +851,7 @@ Amplify Gen 2 は TypeScript の CDK custom resources をバックエンドと�
 
 - 最大同時受講者は 30 名とする。
 - CloudWatch Logs の保持期間は 7 日とする。
-- Claude Sonnet 5、Nova 2 Lite、Nova Pro はクロスリージョン推論プロファイルを使用する。
+- Claude Sonnet 5、Nova 2 Lite、Nova Micro、Nova Pro はクロスリージョン推論プロファイルを使用する。
 
 Guardrailの教材プリセット、拒否トピック、禁止ワード、フィルター強度は確定済みである。既定選択モデルとカスタムドメインは要件定義書の Q-04〜Q-05 に従う。
 

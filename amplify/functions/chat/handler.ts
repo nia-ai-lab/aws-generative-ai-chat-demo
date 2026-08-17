@@ -1,6 +1,7 @@
 import type { APIGatewayProxyEvent, Context } from 'aws-lambda';
 import { chatRequestSchema, type ChatStreamEvent } from '../../../shared/api-schema.js';
 import { MODEL_CATALOG } from '../../../shared/model-catalog.js';
+import { estimateModelInvocationCost, type ModelCostEstimate } from '../../../shared/model-pricing.js';
 import { expandPromptVariables } from '../../../shared/prompt-variables.js';
 import { bearerToken, getAuthContext } from '../shared/auth.js';
 import { readConfig } from '../shared/config.js';
@@ -76,6 +77,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
   let assistantMessage = '';
   let inputTokens: number | undefined;
   let outputTokens: number | undefined;
+  let modelCostEstimate: ModelCostEstimate | undefined;
   let temperature: number | undefined;
   let topP: number | null | undefined;
   let maxOutputTokens: number | undefined;
@@ -155,6 +157,18 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       if (agentEvent.type === 'done') {
         inputTokens = agentEvent.usage?.inputTokens;
         outputTokens = agentEvent.usage?.outputTokens;
+        modelCostEstimate = estimateModelInvocationCost(
+          input.modelKey,
+          inputTokens,
+          outputTokens,
+          config.usdToJpyRate,
+          new Date(startedAtIso),
+        );
+        writeSse(stream, {
+          ...agentEvent,
+          usage: agentEvent.usage ? { ...agentEvent.usage, estimate: modelCostEstimate } : undefined,
+        });
+        continue;
       }
       writeSse(stream, agentEvent);
     }
@@ -173,6 +187,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       assistantMessage,
       inputTokens,
       outputTokens,
+      modelCostEstimate,
       temperature,
       topP,
       maxOutputTokens,
@@ -207,6 +222,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       assistantMessage,
       inputTokens,
       outputTokens,
+      modelCostEstimate,
       temperature,
       topP,
       maxOutputTokens,

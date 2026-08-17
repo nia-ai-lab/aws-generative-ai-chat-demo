@@ -5,5 +5,6 @@ describe('default application config', () => {
   it('starts with no app default prompt', () => {
     expect(defaultConfig().defaultSystemPrompt).toBe('');
     expect(defaultConfig().requiredGuardrailKeys).toEqual([]);
+    expect(defaultConfig().usdToJpyRate).toBe(150);
   });
 });

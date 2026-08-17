@@ -79,6 +79,8 @@ unset STUDENT_USERNAME STUDENT_PASSWORD ADMIN_USERNAME ADMIN_PASSWORD
 10. PII匿名化の確認には架空のメールアドレスまたは電話番号だけを使用する。
 11. CloudWatch Logsで会話監査ログを確認でき、AuthorizationヘッダーやJWTが含まれない。
 12. 対象ロググループの保持期間が7日、KMS暗号化が有効である。
+13. AI応答末尾の閉じた「利用量・モデル推論料金（概算）」を展開し、Input / Outputトークン数、円換算額、モデル単価、換算レートが表示される。
+14. 管理者がUSD/JPY換算レートを変更すると、以後の応答の概算料金へ反映される。表示額が基盤モデル推論だけの概算であることも確認する。
 
 ## 6. トレーニング終了後の削除
 

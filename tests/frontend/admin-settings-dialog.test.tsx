@@ -15,6 +15,7 @@ describe('AdminSettingsDialog', () => {
           enabledModelKeys: ['claude-sonnet-5', 'nova-2-lite'],
           defaultSystemPrompt: '',
           requiredGuardrailKeys: ['content-safety', 'prompt-attack'],
+          usdToJpyRate: 150,
           updatedAt: '2026-08-17T00:00:00.000Z',
           updatedBy: 'admin',
         }}
@@ -28,5 +29,7 @@ describe('AdminSettingsDialog', () => {
     expect(html).toContain('Nova Micro');
     expect(html).toContain('コンテンツ保護');
     expect(html).toContain('禁止ワード: pineapple');
+    expect(html).toContain('USD/JPY換算レート');
+    expect(html).toContain('value="150"');
   });
 });

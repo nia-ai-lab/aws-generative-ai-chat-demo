@@ -199,6 +199,29 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
 .markdown-message th { background: var(--surface-soft); font-weight: 700; }
 .markdown-message input[type='checkbox'] { width: 15px; height: 15px; margin: 0 5px 0 0; vertical-align: -2px; }
 
+.usage-cost-details {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid #e8e8e3;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: normal;
+}
+.usage-cost-details summary {
+  width: fit-content;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+}
+.usage-cost-details summary:hover { color: #464742; }
+.usage-cost-content { max-width: 430px; padding: 10px 0 2px; }
+.usage-cost-content dl { margin: 0 0 8px; }
+.usage-cost-content dl > div { display: flex; justify-content: space-between; gap: 18px; padding: 2px 0; }
+.usage-cost-content dt, .usage-cost-content dd { margin: 0; }
+.usage-cost-content dd { color: #4e504b; font-variant-numeric: tabular-nums; }
+.usage-cost-content .usage-cost-total { margin-top: 4px; padding-top: 5px; border-top: 1px solid #ecece7; font-weight: 700; }
+.usage-cost-content p { margin: 3px 0; line-height: 1.45; }
+
 .composer-wrap {
   padding: 12px max(20px, calc((100vw - 820px) / 2)) calc(16px + env(safe-area-inset-bottom));
   background: linear-gradient(transparent, #f7f7f5 15%);

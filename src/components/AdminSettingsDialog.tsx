@@ -6,6 +6,7 @@ import {
   type GuardrailPolicyKey,
 } from '../../shared/guardrail-catalog';
 import { MODEL_CATALOG, MODEL_KEYS, type ModelKey } from '../../shared/model-catalog';
+import { MAX_USD_TO_JPY_RATE, MIN_USD_TO_JPY_RATE } from '../../shared/model-pricing';
 import { Dialog } from './Dialog';
 import { PromptEditor } from './PromptEditor';
 
@@ -39,7 +40,12 @@ function AdminSettingsForm({ config, onClose, onSave }: {
   const [enabled, setEnabled] = useState<ModelKey[]>(config.enabledModelKeys);
   const [defaultModel, setDefaultModel] = useState<ModelKey>(config.defaultModelKey);
   const [requiredGuardrailKeys, setRequiredGuardrailKeys] = useState<GuardrailPolicyKey[]>(config.requiredGuardrailKeys);
+  const [usdToJpyRate, setUsdToJpyRate] = useState(String(config.usdToJpyRate));
   const [saving, setSaving] = useState(false);
+  const parsedUsdToJpyRate = Number(usdToJpyRate);
+  const validUsdToJpyRate = Number.isFinite(parsedUsdToJpyRate)
+    && parsedUsdToJpyRate >= MIN_USD_TO_JPY_RATE
+    && parsedUsdToJpyRate <= MAX_USD_TO_JPY_RATE;
 
   function toggleModel(key: ModelKey) {
     setEnabled((current) => {
@@ -66,6 +72,7 @@ function AdminSettingsForm({ config, onClose, onSave }: {
         enabledModelKeys: enabled,
         defaultSystemPrompt: prompt,
         requiredGuardrailKeys,
+        usdToJpyRate: parsedUsdToJpyRate,
       });
     } finally {
       setSaving(false);
@@ -96,6 +103,19 @@ function AdminSettingsForm({ config, onClose, onSave }: {
         value={prompt}
         onChange={setPrompt}
       />
+      <label className="field-block">
+        <span>USD/JPY換算レート</span>
+        <input
+          type="number"
+          min={MIN_USD_TO_JPY_RATE}
+          max={MAX_USD_TO_JPY_RATE}
+          step="0.01"
+          inputMode="decimal"
+          value={usdToJpyRate}
+          onChange={(event) => setUsdToJpyRate(event.target.value)}
+        />
+        <small className="setting-hint">1 USDあたりの日本円。モデル推論料金の概算表示に使用します。</small>
+      </label>
       <fieldset className="model-fieldset guardrail-fieldset">
         <legend>必須Guardrail</legend>
         {GUARDRAIL_POLICY_KEYS.map((key) => (
@@ -114,7 +134,7 @@ function AdminSettingsForm({ config, onClose, onSave }: {
       </fieldset>
       <div className="dialog-actions">
         <button type="button" className="secondary-button" onClick={onClose}>キャンセル</button>
-        <button type="button" className="primary-button" disabled={saving} onClick={save}>
+        <button type="button" className="primary-button" disabled={saving || !validUsdToJpyRate} onClick={save}>
           {saving ? '保存中...' : '保存'}
         </button>
       </div>

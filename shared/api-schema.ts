@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { generationConfigSchema } from './generation-config.js';
 import { guardrailPolicyKeysSchema } from './guardrail-catalog.js';
 import { MODEL_KEYS } from './model-catalog.js';
+import {
+  MAX_USD_TO_JPY_RATE,
+  MIN_USD_TO_JPY_RATE,
+  type ModelUsage,
+} from './model-pricing.js';
 
 const modelKeySchema = z.enum(MODEL_KEYS);
 const uuidSchema = z.string().uuid();
@@ -43,6 +48,7 @@ export const adminConfigSchema = z.object({
   enabledModelKeys: z.array(modelKeySchema).min(1),
   defaultSystemPrompt: z.string().max(8_000),
   requiredGuardrailKeys: guardrailPolicyKeysSchema,
+  usdToJpyRate: z.number().min(MIN_USD_TO_JPY_RATE).max(MAX_USD_TO_JPY_RATE),
   updatedAt: z.string(),
   updatedBy: z.string(),
 });
@@ -56,6 +62,7 @@ export const updateAdminConfigSchema = z
     enabledModelKeys: z.array(modelKeySchema).min(1),
     defaultSystemPrompt: z.string().trim().max(8_000),
     requiredGuardrailKeys: guardrailPolicyKeysSchema,
+    usdToJpyRate: z.number().min(MIN_USD_TO_JPY_RATE).max(MAX_USD_TO_JPY_RATE),
   })
   .superRefine((value, context) => {
     if (!value.enabledModelKeys.includes(value.defaultModelKey)) {
@@ -79,5 +86,5 @@ export type UpdateAdminConfig = z.infer<typeof updateAdminConfigSchema>;
 export type ChatStreamEvent =
   | { type: 'meta'; requestId: string; modelKey: string }
   | { type: 'delta'; text: string }
-  | { type: 'done'; finishReason: string; usage?: { inputTokens?: number; outputTokens?: number } }
+  | { type: 'done'; finishReason: string; usage?: ModelUsage }
   | { type: 'error'; code: string; message: string };

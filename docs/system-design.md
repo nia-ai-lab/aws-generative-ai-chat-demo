@@ -181,6 +181,7 @@ TypeScript で実装する。読み取りと管理更新は関数またはハン
   ],
   "defaultSystemPrompt": "",
   "requiredGuardrailKeys": [],
+  "usdToJpyRate": 150,
   "updatedAt": "2026-08-16T00:00:00Z",
   "updatedBy": "cognito-sub"
 }
@@ -285,6 +286,30 @@ AgentCore Runtime は `runtimeSessionId` ごとに専用 microVM を割り当て
 | タイムアウト | Agent 全体の上限を明示し、クライアント切断後の実行も監視する |
 
 受講者は設定ダイアログから上記3項目を変更できる。設定はブラウザタブの `sessionStorage` に保存し、共有CognitoユーザーやDynamoDBをキーとした全体設定にはしない。SPA、Chat Lambda、Agentの3層で値を検証し、Chat Lambdaの監査ログには実際に使用した値を記録する。Top Pが未指定の場合、Agentは`top_p`をBedrock Converseへ渡さず、モデル既定値を使用する。最大アウトプットトークンは未指定にせず常に明示し、トークンクォータの過剰予約を避ける。
+
+#### トークン数とモデル推論料金
+
+AgentはBedrockのストリーム完了イベントからInput / Outputトークン数を取得する。Chat Lambdaは、信頼済みの論理モデルキー、リクエスト開始日時、コードカタログのUSD単価、DynamoDBのUSD/JPY換算レートを用いて日本円概算を計算し、`done`イベントへ付加する。ブラウザは計算を行わず、AIが生成したMarkdownとは別のメタデータ領域に表示する。
+
+計算式:
+
+```text
+Input料金(円)  = Inputトークン数  × Input単価(USD / 1M tokens)  × USD/JPY ÷ 1,000,000
+Output料金(円) = Outputトークン数 × Output単価(USD / 1M tokens) × USD/JPY ÷ 1,000,000
+合計(円)       = Input料金 + Output料金
+```
+
+2026-08-17確認時点の[AWS Bedrock標準オンデマンド単価](https://aws.amazon.com/bedrock/pricing/)。Nova系はAWS Price List APIの東京リージョン価格でも照合する。
+
+| モデル | Input USD / 1M tokens | Output USD / 1M tokens | 適用期間 |
+|---|---:|---:|---|
+| Claude Sonnet 5 | 2.00 | 10.00 | 2026-08-31までのローンチ料金 |
+| Claude Sonnet 5 | 3.00 | 15.00 | 2026-09-01以降 |
+| Nova 2 Lite | 0.396 | 3.311 | 現行 |
+| Nova Micro | 0.042 | 0.168 | 現行 |
+| Nova Pro | 0.96 | 3.84 | 現行 |
+
+[クロスリージョン推論](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html)はリクエスト元リージョンの料金を使用する。表示額は基盤モデルの入出力トークン推論だけを対象とし、AgentCore Runtime / Memory、Guardrails、Lambda、API Gateway、ログ等の料金を含めない。AWS料金改定時はコードカタログと確認日を更新して再デプロイする。既存のDynamoDBレコードに`usdToJpyRate`がない場合は150を読み取り時の初期値とする。
 
 ### 3.11 Bedrock Guardrails
 
@@ -457,14 +482,14 @@ event: delta
 data: {"text":"生成AIは"}
 
 event: done
-data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
+data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"estimate":{"modelKey":"claude-sonnet-5","currency":"JPY","inputCostJpy":0.036,"outputCostJpy":0.1275,"totalCostJpy":0.1635,"inputUsdPerMillionTokens":2,"outputUsdPerMillionTokens":10,"usdToJpyRate":150,"priceVerifiedAt":"2026-08-17","scope":"MODEL_INFERENCE_ONLY"}}}
 ```
 
 エラーは `event: error` で安全なエラーコードだけを返す。HTTP レスポンス開始後はステータスコードを変更できないため、ストリーム内エラーイベントを使用する。
 
 ### 6.3 `GET /admin/config`
 
-管理者にだけ、`configVersion`、有効モデル、既定モデル、アプリ既定プロンプト、必須Guardrail論理キー配列、更新日時、更新者を返す。Lambda は `cognito:groups` に `Admins` が含まれることを必ず検証する。
+管理者にだけ、`configVersion`、有効モデル、既定モデル、アプリ既定プロンプト、必須Guardrail論理キー配列、USD/JPY換算レート、更新日時、更新者を返す。Lambda は `cognito:groups` に `Admins` が含まれることを必ず検証する。
 
 ### 6.4 `PUT /admin/config`
 
@@ -476,7 +501,8 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
   "defaultModelKey": "nova-2-lite",
   "enabledModelKeys": ["claude-sonnet-5", "nova-2-lite"],
   "defaultSystemPrompt": "",
-  "requiredGuardrailKeys": ["content-safety", "prompt-attack"]
+  "requiredGuardrailKeys": ["content-safety", "prompt-attack"],
+  "usdToJpyRate": 150
 }
 ```
 
@@ -513,6 +539,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
 - メッセージ領域: 利用者と AI の発言
 - 応答待ち表示: `AI Thinking...`。最初のSSE `delta`受信時に消去し、以降は応答を逐次表示する
 - AI応答表示: GitHub Flavored Markdown。生HTMLは解釈せず、外部リンクは別タブで安全に開く
+- 利用量・料金表示: AI応答ごとに初期状態で閉じた領域を置き、Input / Outputトークン数、各料金、合計、単価、USD/JPY換算レート、料金確認日を表示する。基盤モデル推論だけの概算である旨を併記する
 - 入力領域: 自動拡張 textarea、送信ボタン、クリアボタン
 
 #### 利用者設定ダイアログ
@@ -535,6 +562,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85}}
 - 有効モデル
 - 既定モデル
 - 必須 Guardrail（初期値なし。チェックボックスで複数選択）
+- USD/JPY換算レート（初期値150、1–1,000）
 - 保存
 - キャンセル
 

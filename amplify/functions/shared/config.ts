@@ -7,6 +7,7 @@ import {
   guardrailPolicyKeysSchema,
 } from '../../../shared/guardrail-catalog.js';
 import { DEFAULT_MODEL_KEY, MODEL_KEYS } from '../../../shared/model-catalog.js';
+import { DEFAULT_USD_TO_JPY_RATE } from '../../../shared/model-pricing.js';
 
 export const CONFIG_KEY = 'APP_CONFIG';
 export const DEFAULT_SYSTEM_PROMPT = '';
@@ -22,6 +23,7 @@ export function defaultConfig(): AdminConfig {
     enabledModelKeys: [...MODEL_KEYS],
     defaultSystemPrompt: DEFAULT_SYSTEM_PROMPT,
     requiredGuardrailKeys: [...DEFAULT_GUARDRAIL_KEYS],
+    usdToJpyRate: DEFAULT_USD_TO_JPY_RATE,
     updatedAt: new Date(0).toISOString(),
     updatedBy: 'system',
   };
@@ -40,6 +42,7 @@ export async function readConfig(): Promise<AdminConfig> {
   return adminConfigSchema.parse({
     ...response.Item,
     requiredGuardrailKeys: requiredGuardrails.success ? requiredGuardrails.data : migratedLegacyGuardrails,
+    usdToJpyRate: response.Item.usdToJpyRate ?? DEFAULT_USD_TO_JPY_RATE,
   });
 }
 

@@ -4,6 +4,7 @@ import type { AdminConfig, PublicConfig, UpdateAdminConfig } from '../../shared/
 import type { GenerationConfig } from '../../shared/generation-config';
 import type { GuardrailPolicyKey } from '../../shared/guardrail-catalog';
 import { MODEL_CATALOG, type ModelKey } from '../../shared/model-catalog';
+import type { ModelUsage } from '../../shared/model-pricing';
 import { safeErrorMessage } from '../../shared/errors';
 import { getAdminConfig, streamChat, updateAdminConfig } from '../lib/api';
 import { shouldSendOnKeyDown } from '../lib/keyboard';
@@ -21,6 +22,7 @@ import {
 } from '../lib/session';
 import { AdminSettingsDialog } from './AdminSettingsDialog';
 import { UserSettingsDialog } from './UserSettingsDialog';
+import { UsageCostDetails } from './UsageCostDetails';
 
 const MarkdownMessage = lazy(() => import('./MarkdownMessage'));
 
@@ -30,6 +32,8 @@ interface Message {
   text: string;
   pending?: boolean;
   error?: boolean;
+  modelKey?: ModelKey;
+  usage?: ModelUsage;
 }
 
 interface ChatScreenProps {
@@ -82,7 +86,13 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
     setMessages((current) => [
       ...current,
       { id: crypto.randomUUID(), role: 'user', text: message },
-      { id: assistantId, role: 'assistant', text: 'AI Thinking...', pending: true },
+      {
+        id: assistantId,
+        role: 'assistant',
+        text: 'AI Thinking...',
+        pending: true,
+        modelKey: selectedModelKey,
+      },
     ]);
 
     const controller = new AbortController();
@@ -113,7 +123,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
         } else if (event.type === 'done') {
           terminalEventReceived = true;
           setMessages((current) => current.map((item) =>
-            item.id === assistantId ? { ...item, pending: false } : item,
+            item.id === assistantId ? { ...item, pending: false, usage: event.usage } : item,
           ));
         } else if (event.type === 'error') {
           terminalEventReceived = true;
@@ -248,6 +258,12 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
                     <MarkdownMessage content={message.text} />
                   </Suspense>
                 )}
+              {message.role === 'assistant' && message.usage && message.modelKey && (
+                <UsageCostDetails
+                  modelLabel={MODEL_CATALOG[message.modelKey].label}
+                  usage={message.usage}
+                />
+              )}
             </div>
           </article>
         ))}

@@ -521,11 +521,32 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     }));
     providerFunction.addToRolePolicy(new iam.PolicyStatement({
       actions: [
+        'bedrock-agentcore:CreateWorkloadIdentity',
+        'bedrock-agentcore:ListWorkloadIdentities',
+      ],
+      resources: [
+        `arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:workload-identity-directory/default`,
+      ],
+    }));
+    providerFunction.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'bedrock-agentcore:GetWorkloadIdentity',
+        'bedrock-agentcore:DeleteWorkloadIdentity',
+      ],
+      resources: [
+        `arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:workload-identity-directory/default/workload-identity/*`,
+      ],
+    }));
+    providerFunction.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
         'bedrock-agentcore:TagResource',
         'bedrock-agentcore:UntagResource',
         'bedrock-agentcore:ListTagsForResource',
       ],
-      resources: [`arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:gateway/*`],
+      resources: [
+        `arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:gateway/*`,
+        `arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:workload-identity-directory/default/workload-identity/*`,
+      ],
     }));
     providerFunction.addToRolePolicy(new iam.PolicyStatement({
       actions: ['iam:PassRole'],

@@ -140,6 +140,10 @@ describe('application infrastructure', () => {
     expect(policies).toContain('bedrock-agentcore:TagResource');
     expect(policies).toContain('bedrock-agentcore:UntagResource');
     expect(policies).toContain('bedrock-agentcore:ListTagsForResource');
+    expect(policies).toContain('bedrock-agentcore:CreateWorkloadIdentity');
+    expect(policies).toContain('bedrock-agentcore:GetWorkloadIdentity');
+    expect(policies).toContain('bedrock-agentcore:DeleteWorkloadIdentity');
+    expect(policies).toContain('workload-identity-directory/default');
     expect(policies).toContain('us-east-1');
   });
 });

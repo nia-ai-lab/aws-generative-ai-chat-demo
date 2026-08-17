@@ -662,6 +662,8 @@ IME 変換中は `preventDefault()` も送信処理も実行しない。送信�
 
 - 対象Gatewayへの`bedrock-agentcore:InvokeGateway`
 - AWS管理Web Search toolへの`bedrock-agentcore:InvokeWebSearch`
+
+Web Search Gatewayを作成・削除するカスタムリソースLambdaには、GatewayとTargetのライフサイクル操作に加えて、Gatewayが依存リソースとして自動生成するWorkload Identityの作成・参照・削除権限を付与する。対象は`us-east-1`の既定Workload Identity Directoryとその配下に限定する。
 - `aws:SourceAccount`と`aws:SourceArn`を信頼ポリシーで限定する
 
 ### 9.5 Deployment role

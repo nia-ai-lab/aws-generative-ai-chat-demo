@@ -10,6 +10,7 @@ AWS トレーニングコース「Generative AI Essentials on AWS」で受講者
 - [モジュール別デモ実施ガイド](./module-demo-guide.md)
 - [Web検索・RAGデモガイド](./tool-rag-demo-guide.md)
 - [30同時実行負荷試験ガイド](./load-test-guide.md)
+- [30同時実行負荷試験結果（2026-08-18）](./load-test-result-2026-08-18.md)
 
 ## 採用方針
 

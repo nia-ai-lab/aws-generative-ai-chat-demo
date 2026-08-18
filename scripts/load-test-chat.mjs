@@ -234,15 +234,12 @@ async function main() {
   if (toolKeys.some((key) => !supportedTools.has(key))) throw new Error('LOAD_TEST_TOOL_KEYS is invalid.');
 
   const accessToken = await acquireAccessToken(outputs);
-  const nicknameAdjectives = ['赤い', '青い', '緑の', '黄色い', '白い', '黒い', '紫の', '桃色の', '銀色の', '金色の'];
-  const nicknameAnimals = ['パンダ', 'キツネ', 'イルカ'];
   const sessions = Array.from({ length: concurrency }, (_, index) => ({
     index,
     browserSessionId: randomUUID(),
     conversationSessionId: randomUUID(),
-    nickname: index < nicknameAdjectives.length * nicknameAnimals.length
-      ? `${nicknameAdjectives[index % nicknameAdjectives.length]}${nicknameAnimals[Math.floor(index / nicknameAdjectives.length)]}`
-      : `青空パンダ${index + 1}号`,
+    variableValue: 1_000 + index,
+    expectedResult: 1_001 + index,
   }));
   const invocation = { apiUrl, accessToken, modelKey, toolKeys, timeoutMs };
 
@@ -260,7 +257,7 @@ async function main() {
     ...invocation,
     sessions,
     rampMs,
-    messageFor: (session) => `この会話では、私のニックネームは「${session.nickname}」です。覚えて「覚えました」とだけ答えてください。`,
+    messageFor: (session) => `この会話の計算問題です。変数Xの値を${session.variableValue}とします。「了解」とだけ答えてください。`,
   });
   await new Promise((resolve) => setTimeout(resolve, roundGapMs));
 
@@ -269,22 +266,24 @@ async function main() {
     ...invocation,
     sessions: firstTurnSuccessfulSessions,
     rampMs,
-    messageFor: () => '私のニックネームを、ニックネームだけで答えてください。',
+    messageFor: () => '変数Xに1を足した結果を、数字だけで答えてください。',
   });
 
   const isolation = secondTurn.map((result) => {
     const session = sessions[result.index];
-    const leakedNicknames = sessions
-      .filter((candidate) => candidate.index !== result.index && result.responseText?.includes(candidate.nickname))
+    const numericAnswers = result.responseText?.match(/\d+/g) ?? [];
+    const leakedResults = sessions
+      .filter((candidate) => candidate.index !== result.index
+        && numericAnswers.includes(String(candidate.expectedResult)))
       .map((candidate) => candidate.index);
     return {
       index: result.index,
-      ownNicknameFound: result.responseText?.includes(session.nickname) ?? false,
-      leakedSessionIndexes: leakedNicknames,
+      ownResultFound: numericAnswers.includes(String(session.expectedResult)),
+      leakedSessionIndexes: leakedResults,
     };
   });
   const isolationPassed = isolation.length === concurrency
-    && isolation.every((result) => result.ownNicknameFound && result.leakedSessionIndexes.length === 0);
+    && isolation.every((result) => result.ownResultFound && result.leakedSessionIndexes.length === 0);
 
   const report = {
     startedAt: testStartedAt,
@@ -310,7 +309,7 @@ async function main() {
     isolation: {
       passed: isolationPassed,
       checked: isolation.length,
-      failures: isolation.filter((result) => !result.ownNicknameFound || result.leakedSessionIndexes.length > 0),
+      failures: isolation.filter((result) => !result.ownResultFound || result.leakedSessionIndexes.length > 0),
     },
     failedRequests: [...firstTurn, ...secondTurn]
       .filter((result) => !result.success)

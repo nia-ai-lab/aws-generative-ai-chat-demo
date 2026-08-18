@@ -21,6 +21,10 @@ describe('application infrastructure', () => {
 
   it('uses Lambda access-token authorization and AgentCore JWT authorization', () => {
     template.resourceCountIs('AWS::ApiGateway::Authorizer', 1);
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'generative-ai-chat-authorizer',
+      ReservedConcurrentExecutions: 40,
+    });
     template.hasResourceProperties('AWS::BedrockAgentCore::Runtime', {
       AuthorizerConfiguration: {
         CustomJWTAuthorizer: Match.objectLike({

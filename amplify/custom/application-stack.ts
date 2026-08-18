@@ -695,7 +695,7 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     'amplify/functions/authorizer/handler.ts',
     logKey,
     { USER_POOL_ID: props.userPool.userPoolId, USER_POOL_CLIENT_ID: props.userPoolClient.userPoolClientId },
-    20,
+    40,
     Duration.seconds(10),
   );
   const configFunction = nodeFunction(

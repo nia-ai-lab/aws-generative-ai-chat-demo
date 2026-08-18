@@ -14,6 +14,7 @@
     "verify:toolchain": "node scripts/verify-toolchain.mjs",
     "prepare:outputs": "node scripts/ensure-amplify-outputs.mjs",
     "package:agent": "bash scripts/package-agent.sh",
+    "loadtest": "bash scripts/run-load-test.sh",
     "check": "npm run prepare:outputs && npm run lint && npm run test && npm run build",
     "deploy": "bash scripts/deploy.sh",
     "destroy": "bash scripts/destroy.sh"

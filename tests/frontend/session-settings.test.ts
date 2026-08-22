@@ -47,11 +47,11 @@ describe('participant generation settings', () => {
     expect(localStorage.length).toBe(0);
   });
 
-  it('tracks changing admin defaults until the participant customizes tools', () => {
+  it('preserves participant choices until the admin tool defaults change', () => {
     expect(getToolKeys(['rag'])).toEqual(['rag']);
-    expect(getToolKeys(['web-search'])).toEqual(['web-search']);
-    setToolKeys(['rag']);
-    expect(getToolKeys(['web-search'])).toEqual(['rag']);
-    expect(sessionStorage.getItem('genai-chat.tool-keys')).toBe('["rag"]');
+    setToolKeys(['web-search']);
+    expect(getToolKeys(['rag'])).toEqual(['web-search']);
+    expect(getToolKeys([])).toEqual([]);
+    expect(sessionStorage.getItem('genai-chat.tool-keys')).toBe('[]');
   });
 });

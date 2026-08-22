@@ -625,7 +625,7 @@ IME 変換中は `preventDefault()` も送信処理も実行しない。送信�
 | チャット | 可 | 可 | API Gateway + Lambda + AgentCore |
 | 利用者プロンプト設定 | 可 | 可 | 現行はブラウザ。将来バックエンド保持時も browser session 単位で分離 |
 | 受講者 Guardrail 選択 | 可 | 可 | ブラウザ保存、Chat Lambdaで論理キーを検証 |
-| Web検索・RAG選択 | 可 | 可 | 未変更時は設定画面を開く際に管理者デフォルトを反映。明示的な変更後はブラウザセッション保存。Chat Lambdaで固定カタログの論理キーを検証 |
+| Web検索・RAG選択 | 可 | 可 | 設定画面を開く際に管理者デフォルトの変更を検出して一度反映。その後の受講者変更はブラウザセッション保存。Chat Lambdaで固定カタログの論理キーを検証 |
 | 管理設定取得 | 不可 | 可 | Lambda `cognito:groups` |
 | 管理設定更新 | 不可 | 可 | Lambda `cognito:groups` |
 | CloudWatch Logs 閲覧 | 不可 | AWS 管理者のみ | IAM |

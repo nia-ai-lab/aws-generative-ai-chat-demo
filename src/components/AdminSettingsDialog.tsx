@@ -114,7 +114,7 @@ function AdminSettingsForm({ config, onClose, onSave }: {
       />
       <fieldset className="model-fieldset guardrail-fieldset">
         <legend>ツール設定</legend>
-        <p className="setting-hint">受講者がまだ変更していない場合、ツール設定を開いたときに反映されます。</p>
+        <p className="setting-hint">変更すると、受講者が次にツール設定を開いたときに反映されます。</p>
         {TOOL_KEYS.map((key) => (
           <label className="check-row guardrail-check-row" key={key}>
             <input

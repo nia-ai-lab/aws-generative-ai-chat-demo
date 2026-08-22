@@ -49,13 +49,13 @@ echo "  User Pool: $USER_POOL_ID"
 echo "  Student:   $STUDENT_USERNAME"
 echo "  Admin:     $ADMIN_USERNAME"
 
-if [[ "${CONFIRM_DELETE_TRAINING_USERS:-}" != "delete-training-users" ]]; then
+if [[ "${CONFIRM_DELETE_TRAINING_USERS:-}" != "delete" ]]; then
   if [[ ! -t 0 ]]; then
-    echo "Set CONFIRM_DELETE_TRAINING_USERS=delete-training-users to confirm deletion." >&2
+    echo "Set CONFIRM_DELETE_TRAINING_USERS=delete to confirm deletion." >&2
     exit 1
   fi
-  read -r -p "Type delete-training-users to continue: " CONFIRMATION
-  if [[ "$CONFIRMATION" != "delete-training-users" ]]; then
+  read -r -p "Type delete to continue: " CONFIRMATION
+  if [[ "$CONFIRMATION" != "delete" ]]; then
     echo "Deletion cancelled."
     exit 1
   fi

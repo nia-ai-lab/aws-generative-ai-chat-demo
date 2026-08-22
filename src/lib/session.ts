@@ -22,8 +22,6 @@ const GENERATION_CONFIG_KEY = 'genai-chat.generation-config';
 const GUARDRAIL_KEYS_KEY = 'genai-chat.guardrail-keys';
 const LEGACY_GUARDRAIL_KEY = 'genai-chat.guardrail-key';
 const TOOL_KEYS_KEY = 'genai-chat.tool-keys';
-const LEGACY_TOOL_KEYS_CUSTOMIZED_KEY = 'genai-chat.tool-keys-customized';
-const TOOL_DEFAULT_FINGERPRINT_KEY = 'genai-chat.tool-default-fingerprint';
 
 function getOrCreateUuid(key: string): string {
   const current = sessionStorage.getItem(key);
@@ -94,25 +92,15 @@ export function setGuardrailKeys(value: GuardrailPolicyKey[]): void {
   sessionStorage.removeItem(LEGACY_GUARDRAIL_KEY);
 }
 
-export function getToolKeys(defaultValue: ToolKey[] = DEFAULT_PARTICIPANT_TOOL_KEYS): ToolKey[] {
-  const validatedDefault = toolKeysSchema.parse(defaultValue);
-  const defaultFingerprint = JSON.stringify(validatedDefault);
-  if (sessionStorage.getItem(TOOL_DEFAULT_FINGERPRINT_KEY) !== defaultFingerprint) {
-    sessionStorage.setItem(TOOL_KEYS_KEY, defaultFingerprint);
-    sessionStorage.setItem(TOOL_DEFAULT_FINGERPRINT_KEY, defaultFingerprint);
-    sessionStorage.removeItem(LEGACY_TOOL_KEYS_CUSTOMIZED_KEY);
-    return [...validatedDefault];
-  }
-
+export function getToolKeys(): ToolKey[] {
   const stored = sessionStorage.getItem(TOOL_KEYS_KEY);
-  if (!stored) return [...validatedDefault];
+  if (!stored) return [...DEFAULT_PARTICIPANT_TOOL_KEYS];
   try {
     const result = toolKeysSchema.safeParse(JSON.parse(stored));
-    if (result.success) return result.data;
+    return result.success ? result.data : [...DEFAULT_PARTICIPANT_TOOL_KEYS];
   } catch {
-    // Fall through to the current defaults.
+    return [...DEFAULT_PARTICIPANT_TOOL_KEYS];
   }
-  return [...validatedDefault];
 }
 
 export function setToolKeys(value: ToolKey[]): void {
@@ -127,6 +115,4 @@ export function clearBrowserSession(): void {
   sessionStorage.removeItem(GUARDRAIL_KEYS_KEY);
   sessionStorage.removeItem(LEGACY_GUARDRAIL_KEY);
   sessionStorage.removeItem(TOOL_KEYS_KEY);
-  sessionStorage.removeItem(LEGACY_TOOL_KEYS_CUSTOMIZED_KEY);
-  sessionStorage.removeItem(TOOL_DEFAULT_FINGERPRINT_KEY);
 }

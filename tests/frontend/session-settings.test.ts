@@ -46,12 +46,4 @@ describe('participant generation settings', () => {
     expect(getToolKeys()).toEqual(['web-search', 'rag']);
     expect(localStorage.length).toBe(0);
   });
-
-  it('preserves participant choices until the admin tool defaults change', () => {
-    expect(getToolKeys(['rag'])).toEqual(['rag']);
-    setToolKeys(['web-search']);
-    expect(getToolKeys(['rag'])).toEqual(['web-search']);
-    expect(getToolKeys([])).toEqual([]);
-    expect(sessionStorage.getItem('genai-chat.tool-keys')).toBe('[]');
-  });
 });

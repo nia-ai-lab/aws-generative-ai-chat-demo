@@ -68,7 +68,7 @@ describe('admin config validation', () => {
       enabledModelKeys: ['claude-sonnet-5'],
       defaultSystemPrompt: '',
       requiredGuardrailKeys: [],
-      defaultToolKeys: ['web-search', 'rag'],
+      enabledToolKeys: ['web-search', 'rag'],
       usdToJpyRate: 150,
     });
     expect(result.defaultSystemPrompt).toBe('');
@@ -92,7 +92,7 @@ describe('admin config validation', () => {
       enabledModelKeys: ['claude-sonnet-5'],
       defaultSystemPrompt: '',
       requiredGuardrailKeys: [],
-      defaultToolKeys: [],
+      enabledToolKeys: [],
     };
     expect(updateAdminConfigSchema.parse({ ...base, usdToJpyRate: 149.5 }).usdToJpyRate).toBe(149.5);
     expect(() => updateAdminConfigSchema.parse({ ...base, usdToJpyRate: 0 })).toThrow();

@@ -145,10 +145,10 @@ TypeScript / Node.js 22 で実装し、次を担当する。
 
 1. API Gateway の Lambda authorizer context を検証する。
 2. リクエスト本文をスキーマ検証する。
-3. DynamoDB から現在の管理設定、必須 Guardrail、ツールのデフォルト設定を取得する。
+3. DynamoDB から現在の管理設定、必須 Guardrail、利用可能ツールを取得する。
 4. 選択モデルが有効モデルに含まれることを検証する。
 5. 管理者必須 Guardrail と受講者 Guardrail から実効 Guardrail を解決する。
-6. 検証済みの受講者ツール指定を適用し、`actorId` を導出する。
+6. 管理者が無効化したツール指定を除外し、`actorId` を導出する。
 7. Cognito JWT を AgentCore Runtime に転送する。
 8. AgentCore の応答ストリームを SSE に正規化してブラウザへ転送する。
 9. リクエスト結果、レイテンシー、実効 Guardrail を構造化ログに記録する。
@@ -159,7 +159,7 @@ Lambda は `awslambda.streamifyResponse` を使用する。AgentCore Runtime へ
 
 TypeScript で実装する。読み取りと管理更新は関数またはハンドラーを分け、最小権限を付与する。
 
-- 一般設定取得: クライアントに必要な表示名、モデルキー、既定モデル、必須 Guardrail、ツールのデフォルト設定だけを返す。管理者プロンプト本文や Guardrail ID は返さない。
+- 一般設定取得: クライアントに必要な表示名、モデルキー、既定モデル、必須 Guardrail、利用可能ツールの論理キーだけを返す。管理者プロンプト本文や Guardrail ID は返さない。
 - 管理設定取得・更新: `Admins` グループを必須とし、完全な設定を扱う。
 - 更新は DynamoDB の `configVersion` 条件式を使う。
 - 更新成功後に `configVersion` を 1 増加させる。
@@ -192,7 +192,7 @@ TypeScript で実装する。読み取りと管理更新は関数またはハン
   ],
   "defaultSystemPrompt": "",
   "requiredGuardrailKeys": [],
-  "defaultToolKeys": [],
+  "enabledToolKeys": ["web-search", "rag"],
   "usdToJpyRate": 150,
   "updatedAt": "2026-08-16T00:00:00Z",
   "updatedBy": "cognito-sub"
@@ -577,7 +577,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 - 最大アウトプットトークン（初期値1,024）
 - Guardrail（初期値なし。事前定義プリセットをチェックボックスで複数選択）
 - 管理者必須 Guardrail がある場合は解除不能であることを表示
-- Web検索、RAG（社内規定検索）。常に両方を表示し、管理設定の初期値は両方オフ。受講者が明示的にオンにした場合だけ使用
+- Web検索、RAG（社内規定検索）。初期値は両方オフで、管理者が許可した項目だけを表示
 - デフォルトに戻す（Temperature、Top P、最大アウトプットトークンを初期値へ戻し、ペルソナは維持。「適用」で確定）
 - 適用
 - キャンセル
@@ -589,7 +589,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 - 有効モデル
 - 既定モデル
 - 必須 Guardrail（初期値なし。チェックボックスで複数選択）
-- ツール設定（受講者設定でWeb検索、RAGをデフォルトオンにするか。初期値は両方オフ）
+- 利用可能なツール（Web検索、RAG）
 - USD/JPY換算レート（初期値150、1–1,000）
 - 保存
 - キャンセル
@@ -625,7 +625,7 @@ IME 変換中は `preventDefault()` も送信処理も実行しない。送信�
 | チャット | 可 | 可 | API Gateway + Lambda + AgentCore |
 | 利用者プロンプト設定 | 可 | 可 | 現行はブラウザ。将来バックエンド保持時も browser session 単位で分離 |
 | 受講者 Guardrail 選択 | 可 | 可 | ブラウザ保存、Chat Lambdaで論理キーを検証 |
-| Web検索・RAG選択 | 可 | 可 | 設定画面を開く際に管理者デフォルトの変更を検出して一度反映。その後の受講者変更はブラウザセッション保存。Chat Lambdaで固定カタログの論理キーを検証 |
+| Web検索・RAG選択 | 可 | 可 | ブラウザ保存、Chat Lambdaで管理者許可リストを適用 |
 | 管理設定取得 | 不可 | 可 | Lambda `cognito:groups` |
 | 管理設定更新 | 不可 | 可 | Lambda `cognito:groups` |
 | CloudWatch Logs 閲覧 | 不可 | AWS 管理者のみ | IAM |

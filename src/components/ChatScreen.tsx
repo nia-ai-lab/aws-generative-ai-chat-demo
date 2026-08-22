@@ -13,7 +13,7 @@ import { MODEL_CATALOG, type ModelKey } from '../../shared/model-catalog';
 import type { ModelUsage } from '../../shared/model-pricing';
 import type { ToolKey } from '../../shared/tool-catalog';
 import { safeErrorMessage } from '../../shared/errors';
-import { getAdminConfig, getConfig, streamChat, updateAdminConfig } from '../lib/api';
+import { getAdminConfig, streamChat, updateAdminConfig } from '../lib/api';
 import { shouldSendOnKeyDown } from '../lib/keyboard';
 import { getBrowserTimeZone } from '../lib/time-zone';
 import {
@@ -62,7 +62,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
   const [userPrompt, setUserPrompt] = useState(getUserSystemPrompt);
   const [generationConfig, setCurrentGenerationConfig] = useState(getGenerationConfig);
   const [guardrailKeys, setCurrentGuardrailKeys] = useState(getGuardrailKeys);
-  const [toolKeys, setCurrentToolKeys] = useState<ToolKey[]>(() => getToolKeys(config.defaultToolKeys));
+  const [toolKeys, setCurrentToolKeys] = useState(getToolKeys);
   const [sending, setSending] = useState(false);
   const [userSettingsOpen, setUserSettingsOpen] = useState(false);
   const [adminSettingsOpen, setAdminSettingsOpen] = useState(false);
@@ -122,7 +122,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           message,
           userSystemPrompt: userPrompt,
           guardrailKeys,
-          toolKeys,
+          toolKeys: toolKeys.filter((key) => config.availableToolKeys.includes(key)),
           timeZone: getBrowserTimeZone(),
           generationConfig,
         },
@@ -204,17 +204,6 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
     setUserSettingsOpen(false);
   }
 
-  async function openUserSettings() {
-    try {
-      const latestConfig = await getConfig();
-      onConfigChange(latestConfig);
-      setCurrentToolKeys(getToolKeys(latestConfig.defaultToolKeys));
-    } catch {
-      // Keep the last successfully loaded configuration if refresh fails.
-    }
-    setUserSettingsOpen(true);
-  }
-
   async function openAdminSettings() {
     setAdminSettingsOpen(true);
     setAdminLoading(true);
@@ -233,7 +222,6 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
     try {
       const updated = await updateAdminConfig(value);
       setAdminConfig(updated);
-      setCurrentToolKeys(getToolKeys(updated.defaultToolKeys));
       onConfigChange({
         configVersion: updated.configVersion,
         defaultModelKey: updated.defaultModelKey,
@@ -242,7 +230,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           label: MODEL_CATALOG[key].label,
         })),
         requiredGuardrailKeys: updated.requiredGuardrailKeys,
-        defaultToolKeys: updated.defaultToolKeys,
+        availableToolKeys: updated.enabledToolKeys,
       });
       setAdminSettingsOpen(false);
     } catch (error) {
@@ -267,7 +255,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           >
             {config.models.map((model) => <option key={model.key} value={model.key}>{model.label}</option>)}
           </select>
-          <button className="icon-button" type="button" aria-label="設定" data-tooltip="設定" onClick={() => void openUserSettings()}>
+          <button className="icon-button" type="button" aria-label="設定" data-tooltip="設定" onClick={() => setUserSettingsOpen(true)}>
             <Settings size={20} />
           </button>
           {isAdmin && (
@@ -332,18 +320,17 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
         </button>
       </div>
 
-      {userSettingsOpen && (
-        <UserSettingsDialog
-          open
-          value={userPrompt}
-          generationConfig={generationConfig}
-          guardrailKeys={guardrailKeys}
-          requiredGuardrailKeys={config.requiredGuardrailKeys}
-          toolKeys={toolKeys}
-          onClose={() => setUserSettingsOpen(false)}
-          onSave={saveUserPrompt}
-        />
-      )}
+      <UserSettingsDialog
+        open={userSettingsOpen}
+        value={userPrompt}
+        generationConfig={generationConfig}
+        guardrailKeys={guardrailKeys}
+        requiredGuardrailKeys={config.requiredGuardrailKeys}
+        toolKeys={toolKeys}
+        availableToolKeys={config.availableToolKeys}
+        onClose={() => setUserSettingsOpen(false)}
+        onSave={saveUserPrompt}
+      />
       <AdminSettingsDialog
         open={adminSettingsOpen}
         config={adminConfig}

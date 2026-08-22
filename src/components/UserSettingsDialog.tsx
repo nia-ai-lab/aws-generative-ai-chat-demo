@@ -11,7 +11,7 @@ import {
 } from '../../shared/guardrail-catalog';
 import { Dialog } from './Dialog';
 import { PromptEditor } from './PromptEditor';
-import { TOOL_CATALOG, TOOL_KEYS, type ToolKey } from '../../shared/tool-catalog';
+import { TOOL_CATALOG, type ToolKey } from '../../shared/tool-catalog';
 
 interface UserSettingsDialogProps {
   open: boolean;
@@ -20,6 +20,7 @@ interface UserSettingsDialogProps {
   guardrailKeys: GuardrailPolicyKey[];
   requiredGuardrailKeys: GuardrailPolicyKey[];
   toolKeys: ToolKey[];
+  availableToolKeys: ToolKey[];
   onClose: () => void;
   onSave: (
     value: string,
@@ -36,6 +37,7 @@ export function UserSettingsDialog({
   guardrailKeys,
   requiredGuardrailKeys,
   toolKeys,
+  availableToolKeys,
   onClose,
   onSave,
 }: UserSettingsDialogProps) {
@@ -90,22 +92,24 @@ export function UserSettingsDialog({
         value={draft}
         onChange={setDraft}
       />
-      <fieldset className="model-fieldset guardrail-fieldset">
-        <legend>ツール</legend>
-        {TOOL_KEYS.map((key) => (
-          <label className="check-row guardrail-check-row" key={key}>
-            <input
-              type="checkbox"
-              checked={selectedToolKeys.includes(key)}
-              onChange={() => toggleTool(key)}
-            />
-            <span>
-              <strong>{TOOL_CATALOG[key].label}</strong>
-              <small>{TOOL_CATALOG[key].description}</small>
-            </span>
-          </label>
-        ))}
-      </fieldset>
+      {availableToolKeys.length > 0 && (
+        <fieldset className="model-fieldset guardrail-fieldset">
+          <legend>ツール</legend>
+          {availableToolKeys.map((key) => (
+            <label className="check-row guardrail-check-row" key={key}>
+              <input
+                type="checkbox"
+                checked={selectedToolKeys.includes(key)}
+                onChange={() => toggleTool(key)}
+              />
+              <span>
+                <strong>{TOOL_CATALOG[key].label}</strong>
+                <small>{TOOL_CATALOG[key].description}</small>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
       <fieldset className="model-fieldset guardrail-fieldset">
         <legend>Guardrail</legend>
         {GUARDRAIL_POLICY_KEYS.map((key) => (
@@ -179,7 +183,7 @@ export function UserSettingsDialog({
             draft,
             parsedGenerationConfig.data,
             selectedGuardrailKeys,
-            selectedToolKeys,
+            selectedToolKeys.filter((key) => availableToolKeys.includes(key)),
           )}
         >
           適用

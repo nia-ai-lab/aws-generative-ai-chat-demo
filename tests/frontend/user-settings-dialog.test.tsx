@@ -12,6 +12,7 @@ describe('UserSettingsDialog', () => {
         guardrailKeys={['denied-topic-travel', 'blocked-word-pineapple']}
         requiredGuardrailKeys={['content-safety', 'prompt-attack']}
         toolKeys={['rag']}
+        availableToolKeys={['web-search', 'rag']}
         onClose={() => undefined}
         onSave={() => undefined}
       />,

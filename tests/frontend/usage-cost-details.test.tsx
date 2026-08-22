@@ -33,7 +33,9 @@ describe('UsageCostDetails', () => {
     expect(html).toContain('Input 1,000 tokens');
     expect(html).toContain('Output 500 tokens');
     expect(html).toContain('¥0.0189');
+    expect(html).toContain('モデル単価（100万トークンあたり）：');
     expect(html).toContain('1 USD = ¥150');
+    expect(html).not.toContain('料金確認日');
     expect(html).toContain('モデル推論のみ');
     expect(html).toContain('Web検索 1回 / 約¥1.0508');
     expect(html).toContain('RAG検索 1回');

@@ -46,10 +46,10 @@ export function UsageCostDetails({ modelLabel, usage, toolUsage }: UsageCostDeta
         </dl>
         <p>{modelLabel}</p>
         <p>
+          モデル単価（100万トークンあたり）：
           Input ${estimate.inputUsdPerMillionTokens} / Output ${estimate.outputUsdPerMillionTokens}
-          （100万tokens）
         </p>
-        <p>1 USD = ¥{estimate.usdToJpyRate} / 料金確認日 {estimate.priceVerifiedAt}</p>
+        <p>換算レート：1 USD = ¥{estimate.usdToJpyRate}</p>
         <p>モデル推論のみ。実際の請求額とは異なる場合があります。</p>
         {toolUsage && (toolUsage.webSearchQueries > 0 || toolUsage.ragRetrievals > 0) && (
           <div className="tool-usage-summary">

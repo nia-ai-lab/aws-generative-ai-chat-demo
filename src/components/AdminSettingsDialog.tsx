@@ -114,7 +114,7 @@ function AdminSettingsForm({ config, onClose, onSave }: {
       />
       <fieldset className="model-fieldset guardrail-fieldset">
         <legend>ツール設定</legend>
-        <p className="setting-hint">新しいブラウザセッションで、最初からオンにするツールを選択します。</p>
+        <p className="setting-hint">受講者がまだ変更していない場合、ツール設定を開いたときに反映されます。</p>
         {TOOL_KEYS.map((key) => (
           <label className="check-row guardrail-check-row" key={key}>
             <input
@@ -124,7 +124,7 @@ function AdminSettingsForm({ config, onClose, onSave }: {
             />
             <span>
               <strong>{TOOL_CATALOG[key].label}</strong>
-              <small>{TOOL_CATALOG[key].description} 受講者は後から変更できます。</small>
+              <small>{TOOL_CATALOG[key].description} 受講者は個別に変更できます。</small>
             </span>
           </label>
         ))}

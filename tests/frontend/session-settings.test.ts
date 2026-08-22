@@ -47,8 +47,10 @@ describe('participant generation settings', () => {
     expect(localStorage.length).toBe(0);
   });
 
-  it('applies admin tool defaults once at the start of a browser session', () => {
+  it('tracks changing admin defaults until the participant customizes tools', () => {
     expect(getToolKeys(['rag'])).toEqual(['rag']);
+    expect(getToolKeys(['web-search'])).toEqual(['web-search']);
+    setToolKeys(['rag']);
     expect(getToolKeys(['web-search'])).toEqual(['rag']);
     expect(sessionStorage.getItem('genai-chat.tool-keys')).toBe('["rag"]');
   });

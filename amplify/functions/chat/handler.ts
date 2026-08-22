@@ -102,7 +102,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
     requiredGuardrailKeys = config.requiredGuardrailKeys;
     participantGuardrailKeys = input.guardrailKeys;
     requestedToolKeys = input.toolKeys;
-    effectiveToolKeys = input.toolKeys.filter((key) => config.enabledToolKeys.includes(key));
+    effectiveToolKeys = [...input.toolKeys];
     const guardrail = resolveGuardrail(config.requiredGuardrailKeys, input.guardrailKeys);
     effectiveGuardrailKey = guardrail.effectiveGuardrailKey;
     auditActorId = actorId(auth.sub, input.browserSessionId);

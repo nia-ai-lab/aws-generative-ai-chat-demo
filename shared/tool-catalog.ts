@@ -23,5 +23,4 @@ export const TOOL_CATALOG: Record<ToolKey, {
   },
 };
 
-export const DEFAULT_ENABLED_TOOL_KEYS: ToolKey[] = [...TOOL_KEYS];
 export const DEFAULT_PARTICIPANT_TOOL_KEYS: ToolKey[] = [];

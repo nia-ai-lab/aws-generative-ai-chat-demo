@@ -21,7 +21,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         defaultModelKey: config.defaultModelKey,
         models: PUBLIC_MODELS.filter((model) => config.enabledModelKeys.includes(model.key)),
         requiredGuardrailKeys: config.requiredGuardrailKeys,
-        availableToolKeys: config.enabledToolKeys,
+        defaultToolKeys: config.defaultToolKeys,
       });
     }
 
@@ -42,7 +42,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       enabledModelKeys: input.enabledModelKeys,
       defaultSystemPrompt: input.defaultSystemPrompt,
       requiredGuardrailKeys: input.requiredGuardrailKeys,
-      enabledToolKeys: input.enabledToolKeys,
+      defaultToolKeys: input.defaultToolKeys,
       usdToJpyRate: input.usdToJpyRate,
       updatedAt: new Date().toISOString(),
       updatedBy: auth.sub,
@@ -63,7 +63,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       defaultModelKey: updated.defaultModelKey,
       enabledModelKeys: updated.enabledModelKeys,
       requiredGuardrailKeys: updated.requiredGuardrailKeys,
-      enabledToolKeys: updated.enabledToolKeys,
+      defaultToolKeys: updated.defaultToolKeys,
       usdToJpyRate: updated.usdToJpyRate,
     }));
     return jsonResponse(event, 200, {
@@ -72,7 +72,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       enabledModelKeys: updated.enabledModelKeys,
       defaultSystemPrompt: updated.defaultSystemPrompt,
       requiredGuardrailKeys: updated.requiredGuardrailKeys,
-      enabledToolKeys: updated.enabledToolKeys,
+      defaultToolKeys: updated.defaultToolKeys,
       usdToJpyRate: updated.usdToJpyRate,
       updatedAt: updated.updatedAt,
       updatedBy: updated.updatedBy,

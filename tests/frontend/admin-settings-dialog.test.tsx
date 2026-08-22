@@ -15,7 +15,7 @@ describe('AdminSettingsDialog', () => {
           enabledModelKeys: ['claude-sonnet-5', 'nova-2-lite'],
           defaultSystemPrompt: '',
           requiredGuardrailKeys: ['content-safety', 'prompt-attack'],
-          enabledToolKeys: ['web-search', 'rag'],
+          defaultToolKeys: [],
           usdToJpyRate: 150,
           updatedAt: '2026-08-17T00:00:00.000Z',
           updatedBy: 'admin',
@@ -32,6 +32,10 @@ describe('AdminSettingsDialog', () => {
     expect(html).toContain('禁止ワード: pineapple');
     expect(html).toContain('USD/JPY換算レート');
     expect(html).toContain('value="150"');
-    expect(html).toContain('利用可能なツール');
+    expect(html).toContain('ツール設定');
+    expect(html).toContain('新しいブラウザセッションで、最初からオンにするツールを選択します。');
+    expect(html).not.toContain('利用可能なツール');
+    const toolSettingsHtml = html.slice(html.indexOf('ツール設定'), html.indexOf('USD/JPY換算レート'));
+    expect(toolSettingsHtml).not.toContain('checked=""');
   });
 });

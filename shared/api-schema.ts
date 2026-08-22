@@ -40,7 +40,7 @@ export const publicConfigSchema = z.object({
   defaultModelKey: modelKeySchema,
   models: z.array(z.object({ key: modelKeySchema, label: z.string().min(1) })).min(1),
   requiredGuardrailKeys: guardrailPolicyKeysSchema,
-  availableToolKeys: toolKeysSchema,
+  defaultToolKeys: toolKeysSchema,
 });
 
 export type PublicConfig = z.infer<typeof publicConfigSchema>;
@@ -51,7 +51,7 @@ export const adminConfigSchema = z.object({
   enabledModelKeys: z.array(modelKeySchema).min(1),
   defaultSystemPrompt: z.string().max(8_000),
   requiredGuardrailKeys: guardrailPolicyKeysSchema,
-  enabledToolKeys: toolKeysSchema,
+  defaultToolKeys: toolKeysSchema,
   usdToJpyRate: z.number().min(MIN_USD_TO_JPY_RATE).max(MAX_USD_TO_JPY_RATE),
   updatedAt: z.string(),
   updatedBy: z.string(),
@@ -66,7 +66,7 @@ export const updateAdminConfigSchema = z
     enabledModelKeys: z.array(modelKeySchema).min(1),
     defaultSystemPrompt: z.string().trim().max(8_000),
     requiredGuardrailKeys: guardrailPolicyKeysSchema,
-    enabledToolKeys: toolKeysSchema,
+    defaultToolKeys: toolKeysSchema,
     usdToJpyRate: z.number().min(MIN_USD_TO_JPY_RATE).max(MAX_USD_TO_JPY_RATE),
   })
   .superRefine((value, context) => {

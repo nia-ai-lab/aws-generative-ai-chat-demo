@@ -92,15 +92,21 @@ export function setGuardrailKeys(value: GuardrailPolicyKey[]): void {
   sessionStorage.removeItem(LEGACY_GUARDRAIL_KEY);
 }
 
-export function getToolKeys(): ToolKey[] {
+export function getToolKeys(defaultValue: ToolKey[] = DEFAULT_PARTICIPANT_TOOL_KEYS): ToolKey[] {
+  const validatedDefault = toolKeysSchema.parse(defaultValue);
   const stored = sessionStorage.getItem(TOOL_KEYS_KEY);
-  if (!stored) return [...DEFAULT_PARTICIPANT_TOOL_KEYS];
+  if (!stored) {
+    setToolKeys(validatedDefault);
+    return [...validatedDefault];
+  }
   try {
     const result = toolKeysSchema.safeParse(JSON.parse(stored));
-    return result.success ? result.data : [...DEFAULT_PARTICIPANT_TOOL_KEYS];
+    if (result.success) return result.data;
   } catch {
-    return [...DEFAULT_PARTICIPANT_TOOL_KEYS];
+    // Replace invalid session data with the current defaults.
   }
+  setToolKeys(validatedDefault);
+  return [...validatedDefault];
 }
 
 export function setToolKeys(value: ToolKey[]): void {

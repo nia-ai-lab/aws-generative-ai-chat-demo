@@ -62,7 +62,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
   const [userPrompt, setUserPrompt] = useState(getUserSystemPrompt);
   const [generationConfig, setCurrentGenerationConfig] = useState(getGenerationConfig);
   const [guardrailKeys, setCurrentGuardrailKeys] = useState(getGuardrailKeys);
-  const [toolKeys, setCurrentToolKeys] = useState(getToolKeys);
+  const [toolKeys, setCurrentToolKeys] = useState<ToolKey[]>(() => getToolKeys(config.defaultToolKeys));
   const [sending, setSending] = useState(false);
   const [userSettingsOpen, setUserSettingsOpen] = useState(false);
   const [adminSettingsOpen, setAdminSettingsOpen] = useState(false);
@@ -122,7 +122,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           message,
           userSystemPrompt: userPrompt,
           guardrailKeys,
-          toolKeys: toolKeys.filter((key) => config.availableToolKeys.includes(key)),
+          toolKeys,
           timeZone: getBrowserTimeZone(),
           generationConfig,
         },
@@ -230,7 +230,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           label: MODEL_CATALOG[key].label,
         })),
         requiredGuardrailKeys: updated.requiredGuardrailKeys,
-        availableToolKeys: updated.enabledToolKeys,
+        defaultToolKeys: updated.defaultToolKeys,
       });
       setAdminSettingsOpen(false);
     } catch (error) {
@@ -327,7 +327,6 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
         guardrailKeys={guardrailKeys}
         requiredGuardrailKeys={config.requiredGuardrailKeys}
         toolKeys={toolKeys}
-        availableToolKeys={config.availableToolKeys}
         onClose={() => setUserSettingsOpen(false)}
         onSave={saveUserPrompt}
       />

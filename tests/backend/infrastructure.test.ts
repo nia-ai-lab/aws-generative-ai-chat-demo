@@ -37,7 +37,7 @@ describe('application infrastructure', () => {
     });
   });
 
-  it('configures short-lived memory and encrypted seven-day logs', () => {
+  it('configures short-lived memory and seven-day logs', () => {
     template.hasResourceProperties('AWS::BedrockAgentCore::Memory', { EventExpiryDuration: 3 });
     template.hasResourceProperties('AWS::Logs::LogGroup', {
       RetentionInDays: 7,
@@ -60,6 +60,59 @@ describe('application infrastructure', () => {
     expect(runtimeEncryptionResources.every((resource: any) =>
       JSON.stringify(resource.Properties?.Delete).includes('disassociateKmsKey'),
     )).toBe(true);
+
+    const memoryApplicationLogGroups = Object.values(template.findResources('AWS::Logs::LogGroup'))
+      .filter((resource: any) => (JSON.stringify(resource.Properties?.LogGroupName) ?? '')
+        .includes('/aws/vendedlogs/bedrock-agentcore/memory/APPLICATION_LOGS/'));
+    expect(memoryApplicationLogGroups).toHaveLength(1);
+    expect(memoryApplicationLogGroups[0].Properties?.RetentionInDays).toBe(7);
+    expect(memoryApplicationLogGroups[0].Properties?.KmsKeyId).toBeUndefined();
+  });
+
+  it('enables native AgentCore Runtime and Memory observability in the application region', () => {
+    template.hasResourceProperties('AWS::BedrockAgentCore::Runtime', {
+      AgentRuntimeArtifact: {
+        CodeConfiguration: Match.objectLike({
+          EntryPoint: ['opentelemetry-instrument', 'main.py'],
+        }),
+      },
+      EnvironmentVariables: Match.objectLike({
+        UNIFIED_TRACES_DESTINATION_ENABLED: 'true',
+      }),
+    });
+
+    const sources = Object.values(template.findResources('AWS::Logs::DeliverySource')) as any[];
+    expect(sources.filter((resource) => resource.Properties?.LogType === 'APPLICATION_LOGS')).toHaveLength(2);
+    expect(sources.filter((resource) => resource.Properties?.LogType === 'TRACES')).toHaveLength(2);
+    template.resourceCountIs('AWS::Logs::Delivery', 4);
+    template.resourceCountIs('AWS::Logs::DeliveryDestination', 4);
+
+    const runtimeApplicationDeliveries = Object.values(template.findResources('AWS::Logs::Delivery'))
+      .filter((resource: any) => Array.isArray(resource.Properties?.RecordFields));
+    expect(runtimeApplicationDeliveries).toHaveLength(1);
+    expect(runtimeApplicationDeliveries[0].Properties.RecordFields).toEqual([
+      'timestamp',
+      'resource_arn',
+      'event_timestamp',
+      'account_id',
+      'request_id',
+      'session_id',
+      'trace_id',
+      'span_id',
+      'service_name',
+      'operation',
+      'request_payload',
+      'response_payload',
+    ]);
+
+    const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('logs:PutResourcePolicy');
+    expect(policies).toContain('xray:PutTraceSegments');
+    expect(policies).toContain('xray:PutTelemetryRecords');
+    expect(policies).toContain('xray:GetSamplingRules');
+    expect(policies).toContain('xray:GetSamplingTargets');
+    expect(policies).toContain('cloudwatch:PutMetricData');
+    expect(policies).toContain('bedrock-agentcore');
   });
 
   it('grants the Runtime only the short-term Memory operations it uses', () => {

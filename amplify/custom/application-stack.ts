@@ -23,6 +23,11 @@ import {
 import * as customResources from 'aws-cdk-lib/custom-resources';
 import type { Construct } from 'constructs';
 import {
+  AGENTCORE_APPLICATION_LOG_FIELDS,
+  addAgentCoreApplicationLogDelivery,
+  addAgentCoreTraceDelivery,
+} from './agentcore-observability.js';
+import {
   GUARDRAIL_POLICY_KEYS,
   effectiveGuardrailKey,
   type GuardrailPolicyKey,
@@ -233,7 +238,7 @@ function manageAgentRuntimeLogGroup(
   logGroupName: string,
   logKey: kms.IKey,
   runtime: agentcore.Runtime,
-): void {
+): { logGroup: logs.ILogGroup; ready: Construct } {
   const retention = new logs.LogRetention(scope, `${id}Retention`, {
     logGroupName,
     retention: logs.RetentionDays.ONE_WEEK,
@@ -280,6 +285,10 @@ function manageAgentRuntimeLogGroup(
     installLatestAwsSdk: false,
   });
   encryption.node.addDependency(retention);
+  return {
+    logGroup: logs.LogGroup.fromLogGroupName(scope, `${id}Reference`, logGroupName),
+    ready: encryption,
+  };
 }
 
 export function createApplicationResources(scope: Construct, props: ApplicationStackProps) {
@@ -589,6 +598,17 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     tags: { Application: 'GenerativeAIChat', DataClass: 'TrainingConversation' },
   });
   memory.applyRemovalPolicy(RemovalPolicy.DESTROY);
+  const memoryLogGroup = new logs.LogGroup(scope, 'ShortTermMemoryApplicationLogs', {
+    logGroupName: `/aws/vendedlogs/bedrock-agentcore/memory/APPLICATION_LOGS/${memory.attrMemoryId}`,
+    retention: logs.RetentionDays.ONE_WEEK,
+    removalPolicy: RemovalPolicy.DESTROY,
+  });
+  memoryLogGroup.node.addDependency(memory);
+  addAgentCoreApplicationLogDelivery(scope, 'ShortTermMemoryApplicationLogs', {
+    resourceArn: memory.attrMemoryArn,
+    logGroup: memoryLogGroup,
+  });
+  addAgentCoreTraceDelivery(scope, 'ShortTermMemoryTraces', memory.attrMemoryArn);
 
   const runtimeRole = new iam.Role(scope, 'AgentRuntimeRole', {
     assumedBy: new iam.ServicePrincipal('bedrock-agentcore.amazonaws.com'),
@@ -645,11 +665,15 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
     resources: [`${runtimeLogGroupArn}:log-stream:*`],
   }));
+  runtimeRole.addToPolicy(new iam.PolicyStatement({
+    actions: ['logs:PutResourcePolicy'],
+    resources: ['*'],
+  }));
 
   const agentArtifact = agentcore.AgentRuntimeArtifact.fromCodeAsset({
     path: path.join(repositoryRoot, 'agent/dist/agent.zip'),
     runtime: agentcore.AgentCoreRuntime.PYTHON_3_12,
-    entrypoint: ['main.py'],
+    entrypoint: ['opentelemetry-instrument', 'main.py'],
   });
   const runtime = new agentcore.Runtime(scope, 'ChatAgentRuntime', {
     runtimeName: 'GenerativeAIChatAgent',
@@ -670,6 +694,7 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
       KNOWLEDGE_BASE_ID: knowledgeBase.attrKnowledgeBaseId,
       WEB_SEARCH_GATEWAY_URL: webSearchGatewayUrl,
       WEB_SEARCH_GATEWAY_REGION: WEB_SEARCH_REGION,
+      UNIFIED_TRACES_DESTINATION_ENABLED: 'true',
     },
     lifecycleConfiguration: {
       idleRuntimeSessionTimeout: Duration.minutes(15),
@@ -685,7 +710,19 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
 
   const runtimeLogGroupPrefix = `/aws/bedrock-agentcore/runtimes/${runtime.agentRuntimeId}`;
   manageAgentRuntimeLogGroup(scope, 'AgentRuntimeDefaultLogs', `${runtimeLogGroupPrefix}-DEFAULT`, logKey, runtime);
-  manageAgentRuntimeLogGroup(scope, 'AgentRuntimeEndpointLogs', `${runtimeLogGroupPrefix}-LiveEndpoint`, logKey, runtime);
+  const endpointLogs = manageAgentRuntimeLogGroup(
+    scope,
+    'AgentRuntimeEndpointLogs',
+    `${runtimeLogGroupPrefix}-LiveEndpoint`,
+    logKey,
+    runtime,
+  );
+  addAgentCoreApplicationLogDelivery(scope, 'AgentRuntimeApplicationLogs', {
+    resourceArn: runtime.agentRuntimeArn,
+    logGroup: endpointLogs.logGroup,
+    recordFields: AGENTCORE_APPLICATION_LOG_FIELDS,
+    destinationReady: endpointLogs.ready,
+  });
 
   const commonEnvironment = { CONFIG_TABLE_NAME: configTable.tableName };
   const authorizerFunction = nodeFunction(

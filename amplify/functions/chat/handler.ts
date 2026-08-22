@@ -8,6 +8,7 @@ import { readConfig } from '../shared/config.js';
 import { corsHeaders } from '../shared/http.js';
 import { resolveGuardrail } from '../shared/guardrails.js';
 import { actorId, runtimeSessionId } from '../shared/session-isolation.js';
+import { propagatedTraceHeaders } from '../shared/trace-context.js';
 import { estimateWebSearchCostJpy } from '../../../shared/tool-pricing.js';
 
 interface LambdaResponseStream {
@@ -124,6 +125,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
         'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': isolatedRuntimeSessionId,
+        ...propagatedTraceHeaders(event.headers, process.env._X_AMZN_TRACE_ID),
       },
       body: JSON.stringify({
         requestId: input.requestId,

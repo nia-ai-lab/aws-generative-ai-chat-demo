@@ -30,6 +30,13 @@ fi
   --only-binary=:all: \
   --requirements "$PROJECT_DIR/agent/requirements.lock"
 
+# uv generates console-script shebangs for the packaging host. AgentCore runs the
+# artifact on Linux, so keep the ADOT launcher portable across build hosts.
+if [[ -f "$PACKAGE_DIR/bin/opentelemetry-instrument" ]]; then
+  sed -i.bak '1s|^#!.*$|#!/usr/bin/env python3|' "$PACKAGE_DIR/bin/opentelemetry-instrument"
+  rm -f -- "$PACKAGE_DIR/bin/opentelemetry-instrument.bak"
+fi
+
 cp "$PROJECT_DIR/agent/main.py" "$PACKAGE_DIR/main.py"
 cp "$PROJECT_DIR/agent/graph.py" "$PACKAGE_DIR/graph.py"
 cp "$PROJECT_DIR/agent/prompts.py" "$PACKAGE_DIR/prompts.py"

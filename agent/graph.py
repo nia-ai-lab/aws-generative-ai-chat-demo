@@ -25,6 +25,7 @@ from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.runtime import Runtime
 from langgraph_checkpoint_aws import AgentCoreMemorySaver
 
+from guardrail_trace import GuardrailTraceSummary, merge_guardrail_traces, summarize_guardrail_trace
 from prompts import compose_system_prompt
 from rag import RagResult, retrieve_policies
 from schemas import ChatInvocation
@@ -55,7 +56,7 @@ def model_for(
         guardrails = {
             "guardrailIdentifier": guardrail_id,
             "guardrailVersion": guardrail_version,
-            "trace": "disabled",
+            "trace": "enabled",
             "streamProcessingMode": "sync",
         }
     model_options: dict[str, Any] = {
@@ -264,6 +265,8 @@ async def stream_chat(invocation: ChatInvocation) -> AsyncIterator[dict[str, Any
     total_input_tokens = 0
     total_output_tokens = 0
     usage_events: set[tuple[str, int, int]] = set()
+    guardrail_traces: list[GuardrailTraceSummary] = []
+    guardrail_intervened = False
     async for chunk, _metadata in GRAPH.astream(
         {"messages": [HumanMessage(invocation.message)]},
         config=config,
@@ -283,9 +286,18 @@ async def stream_chat(invocation: ChatInvocation) -> AsyncIterator[dict[str, Any
                 usage_events.add(usage_key)
                 total_input_tokens += input_tokens
                 total_output_tokens += output_tokens
-    yield {
+        if chunk.response_metadata.get("stopReason") == "guardrail_intervened":
+            guardrail_intervened = True
+        trace = summarize_guardrail_trace(
+            chunk.response_metadata,
+            context.guardrail_id,
+            context.guardrail_version,
+        )
+        if trace:
+            guardrail_traces.append(trace)
+    done_event: dict[str, Any] = {
         "type": "done",
-        "finishReason": "end_turn",
+        "finishReason": "guardrail_intervened" if guardrail_intervened else "end_turn",
         "usage": {"inputTokens": total_input_tokens, "outputTokens": total_output_tokens},
         "sources": context.sources,
         "toolUsage": {
@@ -293,3 +305,7 @@ async def stream_chat(invocation: ChatInvocation) -> AsyncIterator[dict[str, Any
             "ragRetrievals": context.rag_retrieval_count,
         },
     }
+    guardrail_trace = merge_guardrail_traces(guardrail_traces, intervened=guardrail_intervened)
+    if guardrail_trace:
+        done_event["guardrailTrace"] = guardrail_trace
+    yield done_event

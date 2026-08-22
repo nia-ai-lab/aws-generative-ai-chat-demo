@@ -1,4 +1,4 @@
-import type { ChatStreamEvent } from '../../shared/api-schema';
+import { guardrailTraceSummarySchema, type ChatStreamEvent } from '../../shared/api-schema';
 
 export function parseSseBlock(block: string): ChatStreamEvent | undefined {
   const data = block
@@ -8,7 +8,11 @@ export function parseSseBlock(block: string): ChatStreamEvent | undefined {
     .join('\n');
 
   if (!data) return undefined;
-  return JSON.parse(data) as ChatStreamEvent;
+  const event = JSON.parse(data) as ChatStreamEvent;
+  if (event.type === 'done' && event.guardrailTrace !== undefined) {
+    return { ...event, guardrailTrace: guardrailTraceSummarySchema.parse(event.guardrailTrace) };
+  }
+  return event;
 }
 
 export async function* readSse(response: Response): AsyncGenerator<ChatStreamEvent> {

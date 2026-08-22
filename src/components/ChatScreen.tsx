@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type Keyb
 import { LogOut, Send, Settings, Shield, Trash2 } from 'lucide-react';
 import type {
   AdminConfig,
+  GuardrailTraceSummary,
   PublicConfig,
   ToolUsage,
   TrustedSource,
@@ -30,6 +31,7 @@ import {
   setUserSystemPrompt,
 } from '../lib/session';
 import { AdminSettingsDialog } from './AdminSettingsDialog';
+import { GuardrailTraceDetails } from './GuardrailTraceDetails';
 import { UserSettingsDialog } from './UserSettingsDialog';
 import { UsageCostDetails } from './UsageCostDetails';
 import { SourceDetails } from './SourceDetails';
@@ -46,6 +48,7 @@ interface Message {
   usage?: ModelUsage;
   sources?: TrustedSource[];
   toolUsage?: ToolUsage;
+  guardrailTrace?: GuardrailTraceSummary;
 }
 
 interface ChatScreenProps {
@@ -143,6 +146,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
               usage: event.usage,
               sources: event.sources,
               toolUsage: event.toolUsage,
+              guardrailTrace: event.guardrailTrace,
             } : item,
           ));
         } else if (event.type === 'error') {
@@ -282,6 +286,9 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
                     <MarkdownMessage content={message.text} />
                   </Suspense>
                 )}
+              {message.role === 'assistant' && message.guardrailTrace && (
+                <GuardrailTraceDetails trace={message.guardrailTrace} />
+              )}
               {message.role === 'assistant' && message.usage && message.modelKey && (
                 <UsageCostDetails
                   modelLabel={MODEL_CATALOG[message.modelKey].label}

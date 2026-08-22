@@ -39,6 +39,7 @@ fi
 
 cp "$PROJECT_DIR/agent/main.py" "$PACKAGE_DIR/main.py"
 cp "$PROJECT_DIR/agent/graph.py" "$PACKAGE_DIR/graph.py"
+cp "$PROJECT_DIR/agent/guardrail_trace.py" "$PACKAGE_DIR/guardrail_trace.py"
 cp "$PROJECT_DIR/agent/prompts.py" "$PACKAGE_DIR/prompts.py"
 cp "$PROJECT_DIR/agent/schemas.py" "$PACKAGE_DIR/schemas.py"
 cp "$PROJECT_DIR/agent/rag.py" "$PACKAGE_DIR/rag.py"

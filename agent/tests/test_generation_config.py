@@ -47,6 +47,6 @@ def test_model_applies_selected_versioned_guardrail(monkeypatch: pytest.MonkeyPa
     assert captured["guardrails"] == {
         "guardrailIdentifier": "guardrail-id",
         "guardrailVersion": "3",
-        "trace": "disabled",
+        "trace": "enabled",
         "streamProcessingMode": "sync",
     }

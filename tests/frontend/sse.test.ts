@@ -38,4 +38,27 @@ describe('parseSseBlock', () => {
       usage: { inputTokens: 1_000, outputTokens: 500, estimate: { totalCostJpy: 0.0189 } },
     });
   });
+
+  it('preserves a sanitized guardrail trace summary', () => {
+    expect(parseSseBlock(`data: ${JSON.stringify({
+      type: 'done',
+      finishReason: 'guardrail_intervened',
+      guardrailTrace: {
+        result: 'BLOCKED',
+        guardrails: [{ id: 'guardrail-id', version: '2' }],
+        assessments: [{
+          source: 'input',
+          policy: 'topic',
+          name: 'Travel',
+          action: 'BLOCKED',
+        }],
+      },
+    })}`)).toMatchObject({
+      type: 'done',
+      guardrailTrace: {
+        result: 'BLOCKED',
+        assessments: [{ source: 'input', policy: 'topic', name: 'Travel' }],
+      },
+    });
+  });
 });

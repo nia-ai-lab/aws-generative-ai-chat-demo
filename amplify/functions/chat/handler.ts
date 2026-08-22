@@ -1,5 +1,10 @@
 import type { APIGatewayProxyEvent, Context } from 'aws-lambda';
-import { chatRequestSchema, type ChatStreamEvent } from '../../../shared/api-schema.js';
+import {
+  chatRequestSchema,
+  guardrailTraceSummarySchema,
+  type ChatStreamEvent,
+  type GuardrailTraceSummary,
+} from '../../../shared/api-schema.js';
 import { MODEL_CATALOG } from '../../../shared/model-catalog.js';
 import { estimateModelInvocationCost, type ModelCostEstimate } from '../../../shared/model-pricing.js';
 import { expandPromptVariables } from '../../../shared/prompt-variables.js';
@@ -47,8 +52,11 @@ async function* parseAgentSse(body: ReadableStream<Uint8Array>): AsyncGenerator<
     for (const block of blocks) {
       const data = block.split(/\r?\n/).find((line) => line.startsWith('data:'))?.slice(5).trim();
       if (!data) continue;
-      const parsed = JSON.parse(data) as ChatStreamEvent | { error?: string };
-      if (!('type' in parsed)) throw new Error('AGENT_UNAVAILABLE');
+      const parsed = JSON.parse(data) as Record<string, unknown>;
+      if (typeof parsed.type !== 'string') throw new Error('AGENT_UNAVAILABLE');
+      if (parsed.type === 'done' && parsed.guardrailTrace !== undefined) {
+        parsed.guardrailTrace = guardrailTraceSummarySchema.parse(parsed.guardrailTrace);
+      }
       yield parsed as ChatStreamEvent;
     }
     if (done) break;
@@ -86,6 +94,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
   let requiredGuardrailKeys: string[] = [];
   let participantGuardrailKeys: string[] = [];
   let effectiveGuardrailKey = 'none';
+  let guardrailTrace: GuardrailTraceSummary | undefined;
   let activeStream: LambdaResponseStream | undefined;
   let requestedToolKeys: string[] = [];
   let effectiveToolKeys: string[] = [];
@@ -164,6 +173,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
     for await (const agentEvent of parseAgentSse(response.body)) {
       if (agentEvent.type === 'delta') assistantMessage += agentEvent.text;
       if (agentEvent.type === 'done') {
+        guardrailTrace = agentEvent.guardrailTrace;
         inputTokens = agentEvent.usage?.inputTokens;
         outputTokens = agentEvent.usage?.outputTokens;
         modelCostEstimate = estimateModelInvocationCost(
@@ -211,6 +221,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       requiredGuardrailKeys,
       participantGuardrailKeys,
       effectiveGuardrailKey,
+      guardrailTrace,
       requestedToolKeys,
       effectiveToolKeys,
       latencyMs: Date.now() - startedAt,
@@ -248,6 +259,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       requiredGuardrailKeys,
       participantGuardrailKeys,
       effectiveGuardrailKey,
+      guardrailTrace,
       requestedToolKeys,
       effectiveToolKeys,
       latencyMs: Date.now() - startedAt,

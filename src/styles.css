@@ -239,6 +239,28 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
 .usage-cost-content p { margin: 3px 0; line-height: 1.45; }
 .tool-usage-summary { margin-top: 8px; padding-top: 6px; border-top: 1px solid #ecece7; }
 
+.guardrail-trace-details {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid #e8e8e3;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: normal;
+}
+.guardrail-trace-details summary { width: fit-content; cursor: pointer; user-select: none; font-weight: 650; }
+.guardrail-trace-details summary:hover { color: #464742; }
+.guardrail-trace-content { max-width: 520px; padding: 10px 0 2px; }
+.guardrail-trace-content ol { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.guardrail-trace-content li { padding: 9px 10px; border: 1px solid #ecece7; border-radius: 9px; background: #fafaf8; }
+.guardrail-trace-content strong { color: #4b4d48; font-size: 12px; }
+.guardrail-trace-content dl { display: grid; gap: 3px; margin: 6px 0 0; }
+.guardrail-trace-content dl > div { display: grid; grid-template-columns: 92px 1fr; gap: 10px; }
+.guardrail-trace-content dt,
+.guardrail-trace-content dd { margin: 0; }
+.guardrail-trace-content dd { color: #4e504b; }
+.guardrail-trace-content > p { margin: 0; }
+.guardrail-trace-content .guardrail-resource { margin-top: 8px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+
 .source-details {
   margin-top: 10px;
   color: var(--muted);

@@ -101,6 +101,42 @@ export interface ToolUsage {
   webSearchCostJpy?: number;
 }
 
+export const guardrailTraceResultSchema = z.enum(['BLOCKED', 'ANONYMIZED', 'DETECTED']);
+export const guardrailTraceSourceSchema = z.enum(['input', 'output']);
+export const guardrailTracePolicySchema = z.enum([
+  'content',
+  'topic',
+  'word',
+  'sensitive-information',
+  'contextual-grounding',
+  'automated-reasoning',
+]);
+export const guardrailAssessmentSummarySchema = z.object({
+  source: guardrailTraceSourceSchema,
+  policy: guardrailTracePolicySchema,
+  name: z.string().min(1).max(128),
+  action: z.string().min(1).max(32),
+  confidence: z.string().min(1).max(32).optional(),
+  filterStrength: z.string().min(1).max(32).optional(),
+  detected: z.boolean().optional(),
+  score: z.number().finite().optional(),
+  threshold: z.number().finite().optional(),
+}).strict();
+export const guardrailTraceSummarySchema = z.object({
+  result: guardrailTraceResultSchema,
+  guardrails: z.array(z.object({
+    id: z.string().min(1).max(64),
+    version: z.string().min(1).max(16),
+  }).strict()).max(16),
+  assessments: z.array(guardrailAssessmentSummarySchema).max(100),
+}).strict();
+
+export type GuardrailTraceResult = z.infer<typeof guardrailTraceResultSchema>;
+export type GuardrailTraceSource = z.infer<typeof guardrailTraceSourceSchema>;
+export type GuardrailTracePolicy = z.infer<typeof guardrailTracePolicySchema>;
+export type GuardrailAssessmentSummary = z.infer<typeof guardrailAssessmentSummarySchema>;
+export type GuardrailTraceSummary = z.infer<typeof guardrailTraceSummarySchema>;
+
 export type ChatStreamEvent =
   | { type: 'meta'; requestId: string; modelKey: string }
   | { type: 'delta'; text: string }
@@ -110,5 +146,6 @@ export type ChatStreamEvent =
     usage?: ModelUsage;
     sources?: TrustedSource[];
     toolUsage?: ToolUsage;
+    guardrailTrace?: GuardrailTraceSummary;
   }
   | { type: 'error'; code: string; message: string };

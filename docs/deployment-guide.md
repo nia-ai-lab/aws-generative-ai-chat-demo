@@ -55,16 +55,15 @@ agent/.venv/bin/mypy --config-file agent/pyproject.toml agent
 バックエンドの初回デプロイ後に、共有受講者ユーザーと管理者ユーザーを作成する。Cognito構成上、ログインIDにはメールアドレス形式の文字列を使用する。
 
 ```bash
+export DEPLOY_ACCOUNT_ID='<target-account-id>'
 export STUDENT_USERNAME='<training-user-id>'
-export STUDENT_PASSWORD='<temporary-environment-password>'
 export ADMIN_USERNAME='<training-admin-id>'
-export ADMIN_PASSWORD='<temporary-environment-password>'
 export AWS_REGION='ap-northeast-1'
 ./scripts/provision-training-users.sh
-unset STUDENT_USERNAME STUDENT_PASSWORD ADMIN_USERNAME ADMIN_PASSWORD
+unset DEPLOY_ACCOUNT_ID STUDENT_USERNAME ADMIN_USERNAME
 ```
 
-スクリプトはパスワードをファイルへ書き込まない。シェル履歴、画面共有、講義資料への記録にも注意する。
+スクリプトのプロンプトで受講者・管理者に共通のパスワードを2回入力する。パスワードをファイルやシェル履歴へ書き込まない。画面共有、講義資料への記録にも注意する。自動実行する場合だけ、`TRAINING_PASSWORD` 環境変数で共通パスワードを渡せる。
 
 ## 5. デプロイ後確認
 
@@ -90,7 +89,20 @@ unset STUDENT_USERNAME STUDENT_PASSWORD ADMIN_USERNAME ADMIN_PASSWORD
 
 ## 6. トレーニング終了後の削除
 
-削除前にAmplify App ID、対象アカウント、東京リージョンであることを再確認する。
+共有受講者ユーザーと管理者ユーザーだけを削除し、アプリ環境を次回も使用する場合:
+
+```bash
+export DEPLOY_ACCOUNT_ID='<target-account-id>'
+export STUDENT_USERNAME='<training-user-id>'
+export ADMIN_USERNAME='<training-admin-id>'
+export AWS_REGION='ap-northeast-1'
+./scripts/delete-training-users.sh
+unset DEPLOY_ACCOUNT_ID STUDENT_USERNAME ADMIN_USERNAME
+```
+
+スクリプトがアカウント、リージョン、User Pool、削除対象の2ユーザーを表示する。内容を確認し、確認文字列を入力して削除する。対象ユーザーがすでに存在しない場合は正常にスキップする。
+
+アプリ環境そのものも削除する場合は、削除前にAmplify App ID、対象アカウント、東京リージョンであることを再確認する。
 
 ```bash
 export DEPLOY_ACCOUNT_ID='<target-account-id>'

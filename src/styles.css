@@ -320,7 +320,7 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
 .composer:focus-within { border-color: #99ace4; box-shadow: 0 10px 35px rgba(31, 32, 35, .08), 0 0 0 3px rgba(40, 87, 217, .08); }
 .composer textarea {
   min-height: 38px;
-  max-height: calc(3 * 1.55em + 16px);
+  max-height: calc(20 * 1.55em + 16px);
   padding: 8px 0;
   overflow-y: auto;
   border: 0;

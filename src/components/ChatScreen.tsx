@@ -249,6 +249,15 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           <div className="brand-mark small" aria-hidden="true">AI</div>
           <h1>Generative AI Chat</h1>
         </div>
+        <button
+          className="chat-clear-button"
+          type="button"
+          onClick={clearChat}
+          disabled={messages.length === 0 && !sending}
+        >
+          <Trash2 size={17} />
+          チャットクリア
+        </button>
         <div className="header-actions">
           <select
             className="model-select"
@@ -259,17 +268,19 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           >
             {config.models.map((model) => <option key={model.key} value={model.key}>{model.label}</option>)}
           </select>
-          <button className="icon-button" type="button" aria-label="設定" data-tooltip="設定" onClick={() => setUserSettingsOpen(true)}>
-            <Settings size={20} />
-          </button>
-          {isAdmin && (
-            <button className="icon-button" type="button" aria-label="管理設定" data-tooltip="管理設定" onClick={() => void openAdminSettings()}>
-              <Shield size={20} />
+          <div className="header-icon-actions">
+            <button className="icon-button" type="button" aria-label="設定" data-tooltip="設定" onClick={() => setUserSettingsOpen(true)}>
+              <Settings size={20} />
             </button>
-          )}
-          <button className="icon-button" type="button" aria-label="ログアウト" data-tooltip="ログアウト" onClick={() => void onSignOut()}>
-            <LogOut size={20} />
-          </button>
+            {isAdmin && (
+              <button className="icon-button" type="button" aria-label="管理設定" data-tooltip="管理設定" onClick={() => void openAdminSettings()}>
+                <Shield size={20} />
+              </button>
+            )}
+            <button className="icon-button" type="button" aria-label="ログアウト" data-tooltip="ログアウト" onClick={() => void onSignOut()}>
+              <LogOut size={20} />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -322,9 +333,6 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
             <Send size={20} />
           </button>
         </div>
-        <button className="clear-button" type="button" onClick={clearChat} disabled={messages.length === 0 && !sending}>
-          <Trash2 size={16} /> クリア
-        </button>
       </div>
 
       <UserSettingsDialog

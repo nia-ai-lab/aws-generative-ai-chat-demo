@@ -64,6 +64,16 @@ export function UserSettingsDialog({
     onClose();
   }
 
+  function apply() {
+    if (!parsedGenerationConfig.success) return;
+    onSave(
+      draft,
+      parsedGenerationConfig.data,
+      selectedGuardrailKeys,
+      selectedToolKeys.filter((key) => availableToolKeys.includes(key)),
+    );
+  }
+
   function toggleTool(key: ToolKey) {
     setSelectedToolKeys((current) => current.includes(key)
       ? current.filter((item) => item !== key)
@@ -83,7 +93,26 @@ export function UserSettingsDialog({
   }
 
   return (
-    <Dialog open={open} title="チャット設定" onClose={cancel}>
+    <Dialog
+      open={open}
+      title="チャット設定"
+      onClose={cancel}
+      headerActions={(
+        <>
+          <button type="button" className="secondary-button dialog-header-button" onClick={cancel}>
+            キャンセル
+          </button>
+          <button
+            type="button"
+            className="primary-button dialog-header-button"
+            disabled={!parsedGenerationConfig.success}
+            onClick={apply}
+          >
+            適用
+          </button>
+        </>
+      )}
+    >
       <PromptEditor
         label="システムプロンプト(ペルソナ)"
         rows={7}
@@ -179,12 +208,7 @@ export function UserSettingsDialog({
           type="button"
           className="primary-button"
           disabled={!parsedGenerationConfig.success}
-          onClick={() => parsedGenerationConfig.success && onSave(
-            draft,
-            parsedGenerationConfig.data,
-            selectedGuardrailKeys,
-            selectedToolKeys.filter((key) => availableToolKeys.includes(key)),
-          )}
+          onClick={apply}
         >
           適用
         </button>

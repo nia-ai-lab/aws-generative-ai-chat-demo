@@ -23,17 +23,47 @@ interface AdminSettingsDialogProps {
 export function AdminSettingsDialog(props: AdminSettingsDialogProps) {
   const { open, config, loading, error, onClose, onSave } = props;
 
+  if (config) {
+    return (
+      <AdminSettingsForm
+        key={config.configVersion}
+        open={open}
+        config={config}
+        loading={loading}
+        error={error}
+        onClose={onClose}
+        onSave={onSave}
+      />
+    );
+  }
+
   return (
-    <Dialog open={open} title="管理設定" onClose={onClose}>
+    <Dialog
+      open={open}
+      title="管理設定"
+      onClose={onClose}
+      headerActions={(
+        <>
+          <button type="button" className="secondary-button dialog-header-button" onClick={onClose}>
+            キャンセル
+          </button>
+          <button type="button" className="primary-button dialog-header-button" disabled>
+            適用
+          </button>
+        </>
+      )}
+    >
       {loading && <p className="muted">読み込み中...</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
-      {config && <AdminSettingsForm key={config.configVersion} config={config} onClose={onClose} onSave={onSave} />}
     </Dialog>
   );
 }
 
-function AdminSettingsForm({ config, onClose, onSave }: {
+function AdminSettingsForm({ open, config, loading, error, onClose, onSave }: {
+  open: boolean;
   config: AdminConfig;
+  loading: boolean;
+  error: string;
   onClose: () => void;
   onSave: (value: UpdateAdminConfig) => Promise<void>;
 }) {
@@ -48,6 +78,16 @@ function AdminSettingsForm({ config, onClose, onSave }: {
   const validUsdToJpyRate = Number.isFinite(parsedUsdToJpyRate)
     && parsedUsdToJpyRate >= MIN_USD_TO_JPY_RATE
     && parsedUsdToJpyRate <= MAX_USD_TO_JPY_RATE;
+
+  function cancel() {
+    setPrompt(config.defaultSystemPrompt);
+    setEnabled(config.enabledModelKeys);
+    setDefaultModel(config.defaultModelKey);
+    setRequiredGuardrailKeys(config.requiredGuardrailKeys);
+    setEnabledToolKeys(config.enabledToolKeys);
+    setUsdToJpyRate(String(config.usdToJpyRate));
+    onClose();
+  }
 
   function toggleModel(key: ModelKey) {
     setEnabled((current) => {
@@ -89,7 +129,28 @@ function AdminSettingsForm({ config, onClose, onSave }: {
   }
 
   return (
-    <>
+    <Dialog
+      open={open}
+      title="管理設定"
+      onClose={cancel}
+      headerActions={(
+        <>
+          <button type="button" className="secondary-button dialog-header-button" onClick={cancel}>
+            キャンセル
+          </button>
+          <button
+            type="button"
+            className="primary-button dialog-header-button"
+            disabled={loading || saving || !validUsdToJpyRate}
+            onClick={save}
+          >
+            {saving ? '保存中...' : '適用'}
+          </button>
+        </>
+      )}
+    >
+      {loading && <p className="muted">読み込み中...</p>}
+      {error && <p className="form-error" role="alert">{error}</p>}
       <fieldset className="model-fieldset">
         <legend>利用モデル</legend>
         {MODEL_KEYS.map((key) => (
@@ -158,11 +219,16 @@ function AdminSettingsForm({ config, onClose, onSave }: {
         ))}
       </fieldset>
       <div className="dialog-actions">
-        <button type="button" className="secondary-button" onClick={onClose}>キャンセル</button>
-        <button type="button" className="primary-button" disabled={saving || !validUsdToJpyRate} onClick={save}>
-          {saving ? '保存中...' : '保存'}
+        <button type="button" className="secondary-button" onClick={cancel}>キャンセル</button>
+        <button
+          type="button"
+          className="primary-button"
+          disabled={loading || saving || !validUsdToJpyRate}
+          onClick={save}
+        >
+          {saving ? '保存中...' : '適用'}
         </button>
       </div>
-    </>
+    </Dialog>
   );
 }

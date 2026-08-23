@@ -33,5 +33,9 @@ describe('AdminSettingsDialog', () => {
     expect(html).toContain('USD/JPY換算レート');
     expect(html).toContain('value="150"');
     expect(html).toContain('利用可能なツール');
+    expect(html).toContain('dialog-header-actions');
+    expect((html.match(/>キャンセル<\/button>/g) ?? [])).toHaveLength(2);
+    expect((html.match(/>適用<\/button>/g) ?? [])).toHaveLength(2);
+    expect(html).not.toContain('aria-label="閉じる"');
   });
 });

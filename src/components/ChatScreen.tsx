@@ -14,7 +14,7 @@ import { MODEL_CATALOG, type ModelKey } from '../../shared/model-catalog';
 import type { ModelUsage } from '../../shared/model-pricing';
 import type { ToolKey } from '../../shared/tool-catalog';
 import { safeErrorMessage } from '../../shared/errors';
-import { getAdminConfig, streamChat, updateAdminConfig } from '../lib/api';
+import { getAdminConfig, getConfig, streamChat, updateAdminConfig } from '../lib/api';
 import { shouldSendOnKeyDown } from '../lib/keyboard';
 import { getBrowserTimeZone } from '../lib/time-zone';
 import {
@@ -189,6 +189,15 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
     setSending(false);
     resetConversationSessionId();
     inputRef.current?.focus();
+
+    void getConfig()
+      .then((latestConfig) => {
+        setModelKey((current) => latestConfig.models.some((model) => model.key === current)
+          ? current
+          : latestConfig.defaultModelKey);
+        onConfigChange(latestConfig);
+      })
+      .catch(() => undefined);
   }
 
   function saveUserPrompt(

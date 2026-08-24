@@ -1,6 +1,7 @@
 export const ERROR_MESSAGES: Record<string, string> = {
   UNAUTHORIZED: 'ログインし直してください。',
   FORBIDDEN: 'この操作を行う権限がありません。',
+  PARTICIPANT_ACCESS_DISABLED: '現在、このアプリは利用できません。',
   VALIDATION_ERROR: '入力内容を確認してください。',
   MODEL_NOT_ALLOWED: '選択したモデルは現在利用できません。',
   CONFIG_VERSION_CONFLICT: '設定が更新されています。再読み込みしてください。',

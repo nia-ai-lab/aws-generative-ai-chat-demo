@@ -8,7 +8,7 @@ import {
 import { MODEL_CATALOG } from '../../../shared/model-catalog.js';
 import { estimateModelInvocationCost, type ModelCostEstimate } from '../../../shared/model-pricing.js';
 import { expandPromptVariables } from '../../../shared/prompt-variables.js';
-import { bearerToken, getAuthContext } from '../shared/auth.js';
+import { bearerToken, getAuthContext, isAdmin } from '../shared/auth.js';
 import { readConfig } from '../shared/config.js';
 import { corsHeaders } from '../shared/http.js';
 import { resolveGuardrail } from '../shared/guardrails.js';
@@ -102,8 +102,18 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
   try {
     const auth = getAuthContext(event);
     const token = bearerToken(event);
-    const input = chatRequestSchema.parse(JSON.parse(event.body ?? '{}'));
     const config = await readConfig();
+    if (!config.participantAccessEnabled && !isAdmin(auth)) {
+      console.info(JSON.stringify({
+        eventType: 'PARTICIPANT_ACCESS_REJECTED',
+        timestamp: new Date().toISOString(),
+        actorSub: auth.sub,
+        reason: 'PARTICIPANT_ACCESS_DISABLED',
+      }));
+      finishError(event, originalStream, 403, 'PARTICIPANT_ACCESS_DISABLED');
+      return;
+    }
+    const input = chatRequestSchema.parse(JSON.parse(event.body ?? '{}'));
     requestId = input.requestId;
     conversationSessionId = input.conversationSessionId;
     selectedModel = input.modelKey;

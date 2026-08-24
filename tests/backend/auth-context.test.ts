@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { APIGatewayProxyEvent } from 'aws-lambda';
-import { getAuthContext, requireAdmin } from '../../amplify/functions/shared/auth.js';
+import { getAuthContext, isAdmin, requireAdmin } from '../../amplify/functions/shared/auth.js';
 
 function eventWithContext(authorizer: Record<string, unknown>): APIGatewayProxyEvent {
   return {
@@ -18,5 +18,7 @@ describe('API authorization context', () => {
 
   it('rejects a student on admin routes', () => {
     expect(() => requireAdmin({ sub: 'subject', groups: ['Students'] })).toThrow('FORBIDDEN');
+    expect(isAdmin({ sub: 'subject', groups: ['Students'] })).toBe(false);
+    expect(isAdmin({ sub: 'subject', groups: ['Admins'] })).toBe(true);
   });
 });

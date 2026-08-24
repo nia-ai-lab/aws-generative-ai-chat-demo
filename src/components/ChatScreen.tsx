@@ -158,6 +158,14 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
     } catch (error) {
       if ((error as Error).name !== 'AbortError') {
         const code = error instanceof Error ? error.message : 'INTERNAL_ERROR';
+        if (code === 'PARTICIPANT_ACCESS_DISABLED') {
+          try {
+            onConfigChange(await getConfig());
+            return;
+          } catch {
+            // Fall through to the safe error message when the config refresh also fails.
+          }
+        }
         setMessages((current) => current.map((item) =>
           item.id === assistantId
             ? { ...item, text: safeErrorMessage(code), pending: false, error: true }
@@ -237,6 +245,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
       setAdminConfig(updated);
       onConfigChange({
         configVersion: updated.configVersion,
+        participantAccessEnabled: updated.participantAccessEnabled,
         defaultModelKey: updated.defaultModelKey,
         models: updated.enabledModelKeys.map((key) => ({
           key,
@@ -257,6 +266,9 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
         <div className="title-group">
           <div className="brand-mark small" aria-hidden="true">AI</div>
           <h1>Generative AI Chat</h1>
+          {isAdmin && !config.participantAccessEnabled && (
+            <span className="participant-access-status">受講者利用停止中</span>
+          )}
         </div>
         <button
           className="chat-clear-button"

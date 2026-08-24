@@ -28,6 +28,7 @@ describe('ChatScreen', () => {
       <ChatScreen
         config={{
           configVersion: 1,
+          participantAccessEnabled: true,
           defaultModelKey: 'nova-micro',
           models: [{ key: 'nova-micro', label: 'Nova Micro' }],
           requiredGuardrailKeys: [],
@@ -50,6 +51,7 @@ describe('ChatScreen', () => {
       <ChatScreen
         config={{
           configVersion: 1,
+          participantAccessEnabled: true,
           defaultModelKey: 'nova-micro',
           models: [{ key: 'nova-micro', label: 'Nova Micro' }],
           requiredGuardrailKeys: [],
@@ -70,6 +72,7 @@ describe('ChatScreen', () => {
   it('refreshes the available models without delaying chat clear', async () => {
     const latestConfig = {
       configVersion: 2,
+      participantAccessEnabled: true,
       defaultModelKey: 'nova-2-lite' as const,
       models: [{ key: 'nova-2-lite' as const, label: 'Nova 2 Lite' }],
       requiredGuardrailKeys: [],
@@ -88,6 +91,7 @@ describe('ChatScreen', () => {
         <ChatScreen
           config={{
             configVersion: 1,
+            participantAccessEnabled: true,
             defaultModelKey: 'nova-micro',
             models: [{ key: 'nova-micro', label: 'Nova Micro' }],
             requiredGuardrailKeys: [],

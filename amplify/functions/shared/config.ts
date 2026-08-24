@@ -20,6 +20,7 @@ const client = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
 export function defaultConfig(): AdminConfig {
   return {
     configVersion: 1,
+    participantAccessEnabled: true,
     defaultModelKey: DEFAULT_MODEL_KEY,
     enabledModelKeys: [...MODEL_KEYS],
     defaultSystemPrompt: DEFAULT_SYSTEM_PROMPT,
@@ -34,7 +35,11 @@ export function defaultConfig(): AdminConfig {
 export async function readConfig(): Promise<AdminConfig> {
   const tableName = process.env.CONFIG_TABLE_NAME;
   if (!tableName) throw new Error('CONFIG_TABLE_NAME is not configured.');
-  const response = await client.send(new GetCommand({ TableName: tableName, Key: { pk: CONFIG_KEY } }));
+  const response = await client.send(new GetCommand({
+    TableName: tableName,
+    Key: { pk: CONFIG_KEY },
+    ConsistentRead: true,
+  }));
   if (!response.Item) return defaultConfig();
   const requiredGuardrails = guardrailPolicyKeysSchema.safeParse(response.Item.requiredGuardrailKeys);
   const legacyRequiredGuardrail = guardrailKeySchema.safeParse(response.Item.requiredGuardrailKey);
@@ -44,6 +49,7 @@ export async function readConfig(): Promise<AdminConfig> {
     : DEFAULT_GUARDRAIL_KEYS;
   return adminConfigSchema.parse({
     ...response.Item,
+    participantAccessEnabled: response.Item.participantAccessEnabled ?? true,
     requiredGuardrailKeys: requiredGuardrails.success ? requiredGuardrails.data : migratedLegacyGuardrails,
     enabledToolKeys: enabledTools.success ? enabledTools.data : DEFAULT_ENABLED_TOOL_KEYS,
     usdToJpyRate: response.Item.usdToJpyRate ?? DEFAULT_USD_TO_JPY_RATE,

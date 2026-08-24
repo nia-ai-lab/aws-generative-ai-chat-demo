@@ -16,7 +16,11 @@ export function getAuthContext(event: APIGatewayProxyEvent): AuthContext {
 }
 
 export function requireAdmin(context: AuthContext): void {
-  if (!context.groups.includes('Admins')) throw new Error('FORBIDDEN');
+  if (!isAdmin(context)) throw new Error('FORBIDDEN');
+}
+
+export function isAdmin(context: AuthContext): boolean {
+  return context.groups.includes('Admins');
 }
 
 export function bearerToken(event: APIGatewayProxyEvent): string {

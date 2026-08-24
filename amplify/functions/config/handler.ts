@@ -18,6 +18,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       const config = await readConfig();
       return jsonResponse(event, 200, {
         configVersion: config.configVersion,
+        participantAccessEnabled: config.participantAccessEnabled,
         defaultModelKey: config.defaultModelKey,
         models: PUBLIC_MODELS.filter((model) => config.enabledModelKeys.includes(model.key)),
         requiredGuardrailKeys: config.requiredGuardrailKeys,
@@ -38,6 +39,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const updated = {
       pk: CONFIG_KEY,
       configVersion: input.expectedConfigVersion + 1,
+      participantAccessEnabled: input.participantAccessEnabled,
       defaultModelKey: input.defaultModelKey,
       enabledModelKeys: input.enabledModelKeys,
       defaultSystemPrompt: input.defaultSystemPrompt,
@@ -60,6 +62,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       timestamp: updated.updatedAt,
       updatedBy: auth.sub,
       configVersion: updated.configVersion,
+      participantAccessEnabled: updated.participantAccessEnabled,
       defaultModelKey: updated.defaultModelKey,
       enabledModelKeys: updated.enabledModelKeys,
       requiredGuardrailKeys: updated.requiredGuardrailKeys,
@@ -68,6 +71,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }));
     return jsonResponse(event, 200, {
       configVersion: updated.configVersion,
+      participantAccessEnabled: updated.participantAccessEnabled,
       defaultModelKey: updated.defaultModelKey,
       enabledModelKeys: updated.enabledModelKeys,
       defaultSystemPrompt: updated.defaultSystemPrompt,

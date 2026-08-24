@@ -6,9 +6,10 @@ import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
-from bedrock_agentcore import BedrockAgentCoreApp
+from bedrock_agentcore import BedrockAgentCoreApp, RequestContext
 from pydantic import ValidationError
 
+from access_control import ParticipantAccessDisabledError, require_participant_access
 from graph import stream_chat
 from schemas import ChatInvocation
 
@@ -17,12 +18,30 @@ logger = logging.getLogger(__name__)
 
 
 @app.entrypoint
-async def invoke(payload: dict[str, Any]) -> AsyncIterator[dict[str, Any]]:
+async def invoke(payload: dict[str, Any], context: RequestContext) -> AsyncIterator[dict[str, Any]]:
     try:
         invocation = ChatInvocation.model_validate(payload)
     except ValidationError:
         logger.warning("Rejected invalid invocation payload")
         yield {"type": "error", "code": "VALIDATION_ERROR", "message": "Invalid request."}
+        return
+
+    try:
+        require_participant_access(context)
+    except ParticipantAccessDisabledError:
+        logger.info(
+            "Rejected invocation because participant access is disabled requestId=%s",
+            invocation.requestId,
+        )
+        yield {
+            "type": "error",
+            "code": "PARTICIPANT_ACCESS_DISABLED",
+            "message": "Participant access is disabled.",
+        }
+        return
+    except Exception as error:
+        logger.exception("Participant access check failed errorType=%s", type(error).__name__)
+        yield {"type": "error", "code": "AGENT_UNAVAILABLE", "message": "Agent unavailable."}
         return
 
     logger.info(

@@ -146,12 +146,13 @@ TypeScript / Node.js 22 で実装し、次を担当する。
 1. API Gateway の Lambda authorizer context を検証する。
 2. リクエスト本文をスキーマ検証する。
 3. DynamoDB から現在の管理設定、必須 Guardrail、利用可能ツールを取得する。
-4. 選択モデルが有効モデルに含まれることを検証する。
-5. 管理者必須 Guardrail と受講者 Guardrail から実効 Guardrail を解決する。
-6. 管理者が無効化したツール指定を除外し、`actorId` を導出する。
-7. Cognito JWT を AgentCore Runtime に転送する。
-8. AgentCore の応答ストリームを SSE に正規化してブラウザへ転送する。
-9. リクエスト結果、レイテンシー、実効 Guardrail を構造化ログに記録する。
+4. 受講者利用が停止中の場合、`Admins` 以外の要求を `403 PARTICIPANT_ACCESS_DISABLED` で拒否する。
+5. 選択モデルが有効モデルに含まれることを検証する。
+6. 管理者必須 Guardrail と受講者 Guardrail から実効 Guardrail を解決する。
+7. 管理者が無効化したツール指定を除外し、`actorId` を導出する。
+8. Cognito JWT を AgentCore Runtime に転送する。
+9. AgentCore の応答ストリームを SSE に正規化してブラウザへ転送する。
+10. リクエスト結果、レイテンシー、実効 Guardrail を構造化ログに記録する。
 
 Lambda は `awslambda.streamifyResponse` を使用する。AgentCore Runtime への接続には JWT 認証付き HTTPS を使う。OAuth/JWT 経路では AgentCore の AWS SDK invocation ではなく Runtime HTTPS エンドポイントを利用する。
 
@@ -159,7 +160,7 @@ Lambda は `awslambda.streamifyResponse` を使用する。AgentCore Runtime へ
 
 TypeScript で実装する。読み取りと管理更新は関数またはハンドラーを分け、最小権限を付与する。
 
-- 一般設定取得: クライアントに必要な表示名、モデルキー、既定モデル、必須 Guardrail、利用可能ツールの論理キーだけを返す。管理者プロンプト本文や Guardrail ID は返さない。
+- 一般設定取得: 受講者利用可否、表示名、モデルキー、既定モデル、必須 Guardrail、利用可能ツールの論理キーだけを返す。管理者プロンプト本文や Guardrail ID は返さない。
 - 管理設定取得・更新: `Admins` グループを必須とし、完全な設定を扱う。
 - 更新は DynamoDB の `configVersion` 条件式を使う。
 - 更新成功後に `configVersion` を 1 増加させる。
@@ -183,6 +184,7 @@ TypeScript で実装する。読み取りと管理更新は関数またはハン
 {
   "pk": "APP_CONFIG",
   "configVersion": 1,
+  "participantAccessEnabled": true,
   "defaultModelKey": "claude-sonnet-5",
   "enabledModelKeys": [
     "claude-sonnet-5",
@@ -213,7 +215,7 @@ TypeScript で実装する。読み取りと管理更新は関数またはハン
 | 認証 | Custom JWT Authorizer |
 | セッション | `runtimeSessionId = SHA-256(actorId + ':' + conversationSessionId)` |
 | ネットワーク | 初期は PUBLIC。外部公開は AgentCore authorizer で保護する |
-| 実行ロール | Bedrock、Guardrails、AgentCore Memory、Knowledge Base、Web Search Gateway、CloudWatch の必要最小限 |
+| 実行ロール | Bedrock、Guardrails、AgentCore Memory、Knowledge Base、Web Search Gateway、アプリ設定DynamoDB、CloudWatch の必要最小限 |
 
 CloudFormation の次のリソース型を CDK の L1 または `CfnResource` から使用する。これらは 2026-08-16 時点で `ap-northeast-1` の CloudFormation Registry に存在することを確認済みである。
 
@@ -226,6 +228,7 @@ Runtime 設定:
 - Cognito OIDC discovery URL を `AuthorizerConfiguration` に設定する。
 - Cognito App Client ID を allowed client として設定する。
 - Authorization ヘッダーを request header allowlist に含める。
+- AgentCoreが検証済みのJWTから`cognito:groups`を読み、管理者は常に許可する。一般受講者はDynamoDBの`participantAccessEnabled`を強整合読み取りし、停止中ならモデルやツールを呼び出す前に拒否する。
 - Runtime endpoint が `READY` になるまでデプロイ後テストを待機する。
 - Runtime endpoint はバージョン指定または `DEFAULT` qualifier を利用する。
 
@@ -540,6 +543,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 | `FORBIDDEN` | 403 | ロール不足 |
 | `VALIDATION_ERROR` | 400 | 入力形式、長さ、ID が不正 |
 | `MODEL_NOT_ALLOWED` | 400 | モデルが管理設定で無効 |
+| `PARTICIPANT_ACCESS_DISABLED` | 403 / SSE | 管理者が受講者利用を停止中 |
 | `CONFIG_VERSION_CONFLICT` | 409 | 管理設定の更新競合 |
 | `RATE_LIMITED` | 429 / SSE | 利用上限超過 |
 | `MODEL_TIMEOUT` | 504 / SSE | モデル応答時間超過 |
@@ -556,6 +560,14 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 - ユーザー名
 - パスワード
 - ログインボタン
+
+#### 受講者利用停止画面
+
+- `Generative AI Chat`
+- `現在、このアプリは利用できません。`
+- ログアウトボタン
+- ログイン直後、タブ再表示時、60秒ごとの設定更新、またはチャットAPIの拒否を契機に表示する
+- 停止へ切り替わったブラウザでは会話セッションIDを更新し、再開後は新しい会話として開始する
 
 #### チャット画面
 
@@ -584,6 +596,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 
 #### 管理者設定ダイアログ
 
+- 受講者の利用（利用を許可）
 - アプリ既定プロンプト
 - `$DATETIME` / `$TIMEZONE` 挿入ボタン
 - 有効モデル
@@ -622,7 +635,7 @@ IME 変換中は `preventDefault()` も送信処理も実行しない。送信�
 |---|---:|---:|---|
 | ログイン | 可 | 可 | Cognito |
 | 設定取得 | 可 | 可 | API Gateway + Lambda |
-| チャット | 可 | 可 | API Gateway + Lambda + AgentCore |
+| チャット | 管理設定で許可時のみ | 可 | API Gateway + Lambda + AgentCore |
 | 利用者プロンプト設定 | 可 | 可 | 現行はブラウザ。将来バックエンド保持時も browser session 単位で分離 |
 | 受講者 Guardrail 選択 | 可 | 可 | ブラウザ保存、Chat Lambdaで論理キーを検証 |
 | Web検索・RAG選択 | 可 | 可 | ブラウザ保存、Chat Lambdaで管理者許可リストを適用 |
@@ -656,6 +669,7 @@ IME 変換中は `preventDefault()` も送信処理も実行しない。送信�
 - 対象 AgentCore Memory の event/checkpoint 操作
 - 対象Knowledge Baseへの`bedrock:Retrieve`
 - 米国東部の対象AgentCore Gatewayへの`bedrock-agentcore:InvokeGateway`
+- アプリ設定DynamoDBの`GetItem`（受講者利用停止の二重防御）
 - AgentCore Observability と専用ロググループへの出力
 - 他の DynamoDB、S3、Lambda、Secrets Manager へのアクセスは付与しない
 
@@ -798,7 +812,7 @@ Amplify Gen 2 は TypeScript の CDK custom resources をバックエンドと�
 - DynamoDB、ログ、AgentCore Memory、Runtime、API、Cognito User Pool を削除対象に含める。
 - CDK bootstrap の `CDKToolkit` は共有基盤のため削除しない。
 - 削除前に対象アカウント、リージョン、Amplify app/branch を表示して確認する。
-- トレーニング終了時に、Runtime の実行中セッション停止、Amplify backend 削除、残存リソース確認の順に行う。
+- 通常のトレーニング終了時は管理設定で受講者利用を停止し、環境は保持する。環境自体を廃止する場合だけ、Runtime の実行中セッション停止、Amplify backend 削除、残存リソース確認の順に行う。
 
 ## 13. 推奨ディレクトリ構成
 

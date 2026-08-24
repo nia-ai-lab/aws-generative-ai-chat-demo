@@ -11,6 +11,7 @@ describe('AdminSettingsDialog', () => {
         error=""
         config={{
           configVersion: 2,
+          participantAccessEnabled: true,
           defaultModelKey: 'claude-sonnet-5',
           enabledModelKeys: ['claude-sonnet-5', 'nova-2-lite'],
           defaultSystemPrompt: '',
@@ -26,7 +27,9 @@ describe('AdminSettingsDialog', () => {
     );
 
     expect(html).toContain('必須Guardrail');
-    expect((html.match(/type="checkbox"/g) ?? [])).toHaveLength(11);
+    expect((html.match(/type="checkbox"/g) ?? [])).toHaveLength(12);
+    expect(html).toContain('受講者の利用');
+    expect(html).toContain('利用を許可');
     expect(html).toContain('Nova Micro');
     expect(html).toContain('コンテンツ保護');
     expect(html).toContain('禁止ワード: pineapple');

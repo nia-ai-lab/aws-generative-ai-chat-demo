@@ -689,7 +689,11 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
       undefined,
       [agentcore.RuntimeCustomClaim.withStringValue('token_use', 'access')],
     ),
+    requestHeaderConfiguration: {
+      allowlistedHeaders: ['Authorization'],
+    },
     environmentVariables: {
+      CONFIG_TABLE_NAME: configTable.tableName,
       MEMORY_ID: memory.attrMemoryId,
       KNOWLEDGE_BASE_ID: knowledgeBase.attrKnowledgeBaseId,
       WEB_SEARCH_GATEWAY_URL: webSearchGatewayUrl,
@@ -703,6 +707,7 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     tracingEnabled: true,
   });
   runtime.node.addDependency(memory, knowledgeBase, webSearchGateway, ...deployedGuardrails.guardrails);
+  configTable.grantReadData(runtimeRole);
   runtime.addEndpoint('LiveEndpoint', {
     version: runtime.agentRuntimeVersion ?? '1',
     description: 'Live training endpoint.',

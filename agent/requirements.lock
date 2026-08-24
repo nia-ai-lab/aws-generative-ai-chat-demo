@@ -563,7 +563,9 @@ pygments==2.20.0
     #   rich
     #   rich-rst
 pyjwt==2.13.0
-    # via mcp
+    # via
+    #   generative-ai-chat-agent (agent/pyproject.toml)
+    #   mcp
 pyperclip==1.11.0
     # via fastmcp-slim
 python-dateutil==2.9.0.post0

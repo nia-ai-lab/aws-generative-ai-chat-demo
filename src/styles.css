@@ -49,6 +49,19 @@ button:disabled { cursor: default; opacity: .5; }
   backdrop-filter: blur(20px);
 }
 
+.access-disabled-card {
+  width: min(100%, 430px);
+  padding: 36px;
+  border: 1px solid rgba(222, 222, 216, .9);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .88);
+  box-shadow: 0 24px 80px rgba(37, 38, 43, .09);
+  backdrop-filter: blur(20px);
+}
+.access-disabled-card h1 { margin: 24px 0 22px; font-size: 27px; letter-spacing: -.04em; }
+.access-disabled-card p { margin: 0; color: #4f504c; line-height: 1.7; }
+.access-disabled-logout { width: 100%; margin-top: 30px; }
+
 .brand-mark {
   width: 48px;
   height: 48px;
@@ -114,6 +127,16 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
 .title-group, .header-actions, .header-icon-actions { display: flex; align-items: center; gap: 10px; }
 .title-group { justify-self: start; }
 .title-group h1 { margin: 0; font-size: 17px; letter-spacing: -.025em; white-space: nowrap; }
+.participant-access-status {
+  padding: 5px 8px;
+  border: 1px solid #e6c78f;
+  border-radius: 999px;
+  color: #7a4c0f;
+  background: #fff4df;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
 .header-actions { min-width: 0; justify-self: end; justify-content: flex-end; }
 .header-icon-actions { gap: 2px; }
 .model-select { max-width: 190px; background-color: var(--surface); }
@@ -350,6 +373,17 @@ input:focus, textarea:focus, select:focus { border-color: #8da6eb; box-shadow: 0
 .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
 .dialog-actions .reset-button { margin-right: auto; }
 .model-fieldset { display: grid; gap: 10px; margin: 0 0 20px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
+.access-control-setting { margin: 0 0 20px; padding: 14px; border: 1px solid #d9dce5; border-radius: 12px; background: #f8f9fc; }
+.switch-control { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; cursor: pointer; }
+.switch-control > input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.switch-track { width: 42px; height: 24px; padding: 3px; border-radius: 999px; background: #a8aaa7; transition: background .15s; }
+.switch-track > span { display: block; width: 18px; height: 18px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); transition: transform .15s; }
+.switch-control > input:checked + .switch-track { background: var(--accent); }
+.switch-control > input:checked + .switch-track > span { transform: translateX(18px); }
+.switch-control > input:focus-visible + .switch-track { outline: 3px solid rgba(40, 87, 217, .28); outline-offset: 2px; }
+.switch-copy { display: grid; gap: 2px; }
+.switch-copy strong { font-size: 13px; }
+.switch-copy small { color: var(--muted); font-size: 11px; line-height: 1.4; }
 .check-row { display: flex; align-items: center; gap: 9px; font-size: 14px; }
 .check-row input { width: 17px; height: 17px; }
 .guardrail-check-row { align-items: flex-start; }

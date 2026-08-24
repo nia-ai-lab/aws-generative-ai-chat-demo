@@ -64,6 +64,7 @@ describe('admin config validation', () => {
   it('allows an empty app default prompt', () => {
     const result = updateAdminConfigSchema.parse({
       expectedConfigVersion: 1,
+      participantAccessEnabled: true,
       defaultModelKey: 'claude-sonnet-5',
       enabledModelKeys: ['claude-sonnet-5'],
       defaultSystemPrompt: '',
@@ -77,6 +78,7 @@ describe('admin config validation', () => {
   it('requires the default model to remain enabled', () => {
     expect(() => updateAdminConfigSchema.parse({
       expectedConfigVersion: 1,
+      participantAccessEnabled: true,
       defaultModelKey: 'claude-sonnet-5',
       enabledModelKeys: ['nova-2-lite'],
       defaultSystemPrompt: '安全に回答する',
@@ -88,6 +90,7 @@ describe('admin config validation', () => {
   it('validates the administrative USD/JPY conversion rate', () => {
     const base = {
       expectedConfigVersion: 1,
+      participantAccessEnabled: true,
       defaultModelKey: 'claude-sonnet-5',
       enabledModelKeys: ['claude-sonnet-5'],
       defaultSystemPrompt: '',
@@ -97,5 +100,19 @@ describe('admin config validation', () => {
     expect(updateAdminConfigSchema.parse({ ...base, usdToJpyRate: 149.5 }).usdToJpyRate).toBe(149.5);
     expect(() => updateAdminConfigSchema.parse({ ...base, usdToJpyRate: 0 })).toThrow();
     expect(() => updateAdminConfigSchema.parse({ ...base, usdToJpyRate: 1_001 })).toThrow();
+  });
+
+  it('requires an explicit participant access switch', () => {
+    const result = updateAdminConfigSchema.parse({
+      expectedConfigVersion: 1,
+      participantAccessEnabled: false,
+      defaultModelKey: 'claude-sonnet-5',
+      enabledModelKeys: ['claude-sonnet-5'],
+      defaultSystemPrompt: '',
+      requiredGuardrailKeys: [],
+      enabledToolKeys: [],
+      usdToJpyRate: 150,
+    });
+    expect(result.participantAccessEnabled).toBe(false);
   });
 });

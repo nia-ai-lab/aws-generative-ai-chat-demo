@@ -68,6 +68,7 @@ function AdminSettingsForm({ open, config, loading, error, onClose, onSave }: {
   onSave: (value: UpdateAdminConfig) => Promise<void>;
 }) {
   const [prompt, setPrompt] = useState(config.defaultSystemPrompt);
+  const [participantAccessEnabled, setParticipantAccessEnabled] = useState(config.participantAccessEnabled);
   const [enabled, setEnabled] = useState<ModelKey[]>(config.enabledModelKeys);
   const [defaultModel, setDefaultModel] = useState<ModelKey>(config.defaultModelKey);
   const [requiredGuardrailKeys, setRequiredGuardrailKeys] = useState<GuardrailPolicyKey[]>(config.requiredGuardrailKeys);
@@ -81,6 +82,7 @@ function AdminSettingsForm({ open, config, loading, error, onClose, onSave }: {
 
   function cancel() {
     setPrompt(config.defaultSystemPrompt);
+    setParticipantAccessEnabled(config.participantAccessEnabled);
     setEnabled(config.enabledModelKeys);
     setDefaultModel(config.defaultModelKey);
     setRequiredGuardrailKeys(config.requiredGuardrailKeys);
@@ -116,6 +118,7 @@ function AdminSettingsForm({ open, config, loading, error, onClose, onSave }: {
     try {
       await onSave({
         expectedConfigVersion: config.configVersion,
+        participantAccessEnabled,
         defaultModelKey: defaultModel,
         enabledModelKeys: enabled,
         defaultSystemPrompt: prompt,
@@ -151,6 +154,21 @@ function AdminSettingsForm({ open, config, loading, error, onClose, onSave }: {
     >
       {loading && <p className="muted">読み込み中...</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
+      <fieldset className="access-control-setting">
+        <legend>受講者の利用</legend>
+        <label className="switch-control">
+          <input
+            type="checkbox"
+            checked={participantAccessEnabled}
+            onChange={(event) => setParticipantAccessEnabled(event.target.checked)}
+          />
+          <span className="switch-track" aria-hidden="true"><span /></span>
+          <span className="switch-copy">
+            <strong>利用を許可</strong>
+            <small>オフにすると、受講者はチャットを利用できません。</small>
+          </span>
+        </label>
+      </fieldset>
       <fieldset className="model-fieldset">
         <legend>利用モデル</legend>
         {MODEL_KEYS.map((key) => (

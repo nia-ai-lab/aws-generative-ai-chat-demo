@@ -34,7 +34,16 @@ describe('application infrastructure', () => {
           ]),
         }),
       },
+      RequestHeaderConfiguration: {
+        RequestHeaderAllowlist: ['Authorization'],
+      },
+      EnvironmentVariables: Match.objectLike({
+        CONFIG_TABLE_NAME: Match.anyValue(),
+      }),
     });
+
+    const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('dynamodb:GetItem');
   });
 
   it('configures short-lived memory and seven-day logs', () => {

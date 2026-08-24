@@ -38,6 +38,7 @@ if [[ -f "$PACKAGE_DIR/bin/opentelemetry-instrument" ]]; then
 fi
 
 cp "$PROJECT_DIR/agent/main.py" "$PACKAGE_DIR/main.py"
+cp "$PROJECT_DIR/agent/access_control.py" "$PACKAGE_DIR/access_control.py"
 cp "$PROJECT_DIR/agent/graph.py" "$PACKAGE_DIR/graph.py"
 cp "$PROJECT_DIR/agent/guardrail_trace.py" "$PACKAGE_DIR/guardrail_trace.py"
 cp "$PROJECT_DIR/agent/prompts.py" "$PACKAGE_DIR/prompts.py"

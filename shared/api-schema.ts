@@ -37,6 +37,7 @@ export type ChatRequest = z.infer<typeof chatRequestSchema>;
 
 export const publicConfigSchema = z.object({
   configVersion: z.number().int().positive(),
+  participantAccessEnabled: z.boolean(),
   defaultModelKey: modelKeySchema,
   models: z.array(z.object({ key: modelKeySchema, label: z.string().min(1) })).min(1),
   requiredGuardrailKeys: guardrailPolicyKeysSchema,
@@ -47,6 +48,7 @@ export type PublicConfig = z.infer<typeof publicConfigSchema>;
 
 export const adminConfigSchema = z.object({
   configVersion: z.number().int().positive(),
+  participantAccessEnabled: z.boolean(),
   defaultModelKey: modelKeySchema,
   enabledModelKeys: z.array(modelKeySchema).min(1),
   defaultSystemPrompt: z.string().max(8_000),
@@ -62,6 +64,7 @@ export type AdminConfig = z.infer<typeof adminConfigSchema>;
 export const updateAdminConfigSchema = z
   .object({
     expectedConfigVersion: z.number().int().positive(),
+    participantAccessEnabled: z.boolean(),
     defaultModelKey: modelKeySchema,
     enabledModelKeys: z.array(modelKeySchema).min(1),
     defaultSystemPrompt: z.string().trim().max(8_000),

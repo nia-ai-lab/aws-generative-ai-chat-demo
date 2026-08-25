@@ -67,6 +67,17 @@ unset DEPLOY_ACCOUNT_ID STUDENT_USERNAME ADMIN_USERNAME
 
 ## 5. デプロイ後確認
 
+受講者利用停止のバックエンドスモークテストは、対象アカウントを明示して実行する。
+
+```bash
+export DEPLOY_ACCOUNT_ID='<target-account-id>'
+export AWS_REGION='ap-northeast-1'
+npm run smoke:participant-access
+unset DEPLOY_ACCOUNT_ID AWS_REGION
+```
+
+このテストは現在の受講者利用設定を記録し、一時的に利用停止へ変更して、一般受講者のチャットが`PARTICIPANT_ACCESS_DISABLED`で拒否されることを確認する。成功・失敗にかかわらず、終了時にはテスト開始前の利用設定へ復元する。ストリーミングLambdaを通常のLambda Invokeで直接呼び出すため、出力ファイルにはHTTPレスポンス外形ではなくレスポンス本文だけが格納される。したがって、このテストはLambda実行成功と安定した拒否コードを検証し、ブラウザに返るHTTP 403は次の画面確認で検証する。
+
 1. `/health` が `200` を返す。
 2. 受講者ユーザーと管理者ユーザーがログインできる。
 3. 一般受講者に管理ボタンが表示されず、管理APIの直接呼び出しも `403` になる。

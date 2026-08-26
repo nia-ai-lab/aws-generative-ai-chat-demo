@@ -8,7 +8,7 @@ import { fetchAuthSession, signIn } from 'aws-amplify/auth';
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const projectDirectory = path.resolve(scriptDirectory, '..');
 const supportedModels = new Set(['claude-sonnet-5', 'nova-micro', 'nova-2-lite', 'nova-pro']);
-const supportedTools = new Set(['web-search', 'rag']);
+const supportedTools = new Set(['web-search', 'rag', 'product-rag']);
 
 function integerSetting(name, fallback, minimum, maximum) {
   const raw = process.env[name];

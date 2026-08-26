@@ -36,6 +36,7 @@ import {
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(currentDirectory, '../..');
 const RAG_DOCUMENT_VERSION = 1;
+const PRODUCT_RAG_DOCUMENT_VERSION = 1;
 const WEB_SEARCH_REGION = 'us-east-1';
 
 interface ApplicationStackProps {
@@ -331,6 +332,13 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     prune: true,
     retainOnDelete: false,
   });
+  const productKnowledgeDocuments = new s3deploy.BucketDeployment(scope, 'ProductKnowledgeDocuments', {
+    sources: [s3deploy.Source.asset(path.join(repositoryRoot, 'product-knowledge-base'), { exclude: ['README.md'] })],
+    destinationBucket: knowledgeSourceBucket,
+    destinationKeyPrefix: 'products',
+    prune: true,
+    retainOnDelete: false,
+  });
 
   const vectorBucket = new s3vectors.CfnVectorBucket(scope, 'KnowledgeVectorBucket', {
     encryptionConfiguration: { sseType: 'AES256' },
@@ -350,6 +358,19 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
   });
   vectorIndex.applyRemovalPolicy(RemovalPolicy.DESTROY);
   vectorIndex.addResourceDependency(vectorBucket);
+  const productVectorIndex = new s3vectors.CfnIndex(scope, 'ProductKnowledgeVectorIndex', {
+    vectorBucketArn: vectorBucket.attrVectorBucketArn,
+    indexName: 'fictional-products',
+    dataType: 'float32',
+    dimension: 1_024,
+    distanceMetric: 'cosine',
+    metadataConfiguration: {
+      nonFilterableMetadataKeys: ['AMAZON_BEDROCK_TEXT', 'AMAZON_BEDROCK_METADATA'],
+    },
+    tags: [{ key: 'Application', value: 'GenerativeAIChat' }],
+  });
+  productVectorIndex.applyRemovalPolicy(RemovalPolicy.DESTROY);
+  productVectorIndex.addResourceDependency(vectorBucket);
 
   const knowledgeRole = new iam.Role(scope, 'KnowledgeBaseRole', {
     assumedBy: new iam.ServicePrincipal('bedrock.amazonaws.com', {
@@ -358,7 +379,7 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
         ArnLike: { 'aws:SourceArn': `arn:${stack.partition}:bedrock:${stack.region}:${stack.account}:knowledge-base/*` },
       },
     }),
-    description: 'Reads fictional policy documents and writes their embeddings to S3 Vectors.',
+    description: 'Reads fictional policy and product documents and writes their embeddings to S3 Vectors.',
   });
   const knowledgePolicy = new iam.Policy(scope, 'KnowledgeBasePolicy', {
     statements: [
@@ -372,7 +393,10 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
       }),
       new iam.PolicyStatement({
         actions: ['s3:GetObject'],
-        resources: [knowledgeSourceBucket.arnForObjects('policies/*')],
+        resources: [
+          knowledgeSourceBucket.arnForObjects('policies/*'),
+          knowledgeSourceBucket.arnForObjects('products/*'),
+        ],
       }),
       new iam.PolicyStatement({
         actions: [
@@ -382,7 +406,7 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
           's3vectors:QueryVectors',
           's3vectors:GetIndex',
         ],
-        resources: [vectorIndex.attrIndexArn],
+        resources: [vectorIndex.attrIndexArn, productVectorIndex.attrIndexArn],
       }),
     ],
   });
@@ -413,6 +437,31 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
   knowledgeBase.applyRemovalPolicy(RemovalPolicy.DESTROY);
   knowledgeBase.node.addDependency(knowledgePolicy, vectorIndex);
 
+  const productKnowledgeBase = new bedrock.CfnKnowledgeBase(scope, 'ProductSupportKnowledgeBase', {
+    name: 'GenerativeAIChatFictionalProducts',
+    description: 'Fictional Japanese home-appliance documents for the customer support RAG demo.',
+    roleArn: knowledgeRole.roleArn,
+    knowledgeBaseConfiguration: {
+      type: 'VECTOR',
+      vectorKnowledgeBaseConfiguration: {
+        embeddingModelArn: `arn:${stack.partition}:bedrock:${stack.region}::foundation-model/amazon.titan-embed-text-v2:0`,
+        embeddingModelConfiguration: {
+          bedrockEmbeddingModelConfiguration: { dimensions: 1_024, embeddingDataType: 'FLOAT32' },
+        },
+      },
+    },
+    storageConfiguration: {
+      type: 'S3_VECTORS',
+      s3VectorsConfiguration: {
+        vectorBucketArn: vectorBucket.attrVectorBucketArn,
+        indexArn: productVectorIndex.attrIndexArn,
+      },
+    },
+    tags: { Application: 'GenerativeAIChat', DataClass: 'FictionalProductMaterial' },
+  });
+  productKnowledgeBase.applyRemovalPolicy(RemovalPolicy.DESTROY);
+  productKnowledgeBase.node.addDependency(knowledgePolicy, productVectorIndex);
+
   const knowledgeDataSource = new bedrock.CfnDataSource(scope, 'CompanyPolicyDataSource', {
     name: 'FictionalCompanyPolicies',
     description: 'Japanese fictional policies deployed with the public sample application.',
@@ -435,6 +484,29 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
   });
   knowledgeDataSource.applyRemovalPolicy(RemovalPolicy.DESTROY);
   knowledgeDataSource.node.addDependency(knowledgeBase);
+
+  const productKnowledgeDataSource = new bedrock.CfnDataSource(scope, 'ProductSupportDataSource', {
+    name: 'FictionalHomeApplianceDocuments',
+    description: 'Japanese fictional product documents deployed with the public sample application.',
+    knowledgeBaseId: productKnowledgeBase.attrKnowledgeBaseId,
+    dataDeletionPolicy: 'DELETE',
+    dataSourceConfiguration: {
+      type: 'S3',
+      s3Configuration: {
+        bucketArn: knowledgeSourceBucket.bucketArn,
+        bucketOwnerAccountId: stack.account,
+        inclusionPrefixes: ['products/'],
+      },
+    },
+    vectorIngestionConfiguration: {
+      chunkingConfiguration: {
+        chunkingStrategy: 'FIXED_SIZE',
+        fixedSizeChunkingConfiguration: { maxTokens: 300, overlapPercentage: 20 },
+      },
+    },
+  });
+  productKnowledgeDataSource.applyRemovalPolicy(RemovalPolicy.DESTROY);
+  productKnowledgeDataSource.node.addDependency(productKnowledgeBase);
 
   const ingestion = new customResources.AwsCustomResource(scope, 'KnowledgeBaseIngestion', {
     onCreate: {
@@ -465,6 +537,36 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     timeout: Duration.minutes(2),
   });
   ingestion.node.addDependency(knowledgeDocuments, knowledgeDataSource);
+
+  const productIngestion = new customResources.AwsCustomResource(scope, 'ProductKnowledgeBaseIngestion', {
+    onCreate: {
+      service: 'BedrockAgent',
+      action: 'startIngestionJob',
+      parameters: {
+        knowledgeBaseId: productKnowledgeBase.attrKnowledgeBaseId,
+        dataSourceId: productKnowledgeDataSource.attrDataSourceId,
+        description: `Deployment sync v${PRODUCT_RAG_DOCUMENT_VERSION}`,
+      },
+      physicalResourceId: customResources.PhysicalResourceId.fromResponse('ingestionJob.ingestionJobId'),
+    },
+    onUpdate: {
+      service: 'BedrockAgent',
+      action: 'startIngestionJob',
+      parameters: {
+        knowledgeBaseId: productKnowledgeBase.attrKnowledgeBaseId,
+        dataSourceId: productKnowledgeDataSource.attrDataSourceId,
+        description: `Deployment sync v${PRODUCT_RAG_DOCUMENT_VERSION}`,
+      },
+      physicalResourceId: customResources.PhysicalResourceId.fromResponse('ingestionJob.ingestionJobId'),
+    },
+    policy: customResources.AwsCustomResourcePolicy.fromStatements([new iam.PolicyStatement({
+      actions: ['bedrock:StartIngestionJob'],
+      resources: ['*'],
+    })]),
+    installLatestAwsSdk: false,
+    timeout: Duration.minutes(2),
+  });
+  productIngestion.node.addDependency(productKnowledgeDocuments, productKnowledgeDataSource);
 
   const gatewayRole = new iam.Role(scope, 'WebSearchGatewayRole', {
     assumedBy: new iam.ServicePrincipal('bedrock-agentcore.amazonaws.com', {
@@ -629,7 +731,10 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
   }));
   runtimeRole.addToPolicy(new iam.PolicyStatement({
     actions: ['bedrock:Retrieve'],
-    resources: [`arn:${stack.partition}:bedrock:${stack.region}:${stack.account}:knowledge-base/${knowledgeBase.attrKnowledgeBaseId}`],
+    resources: [
+      `arn:${stack.partition}:bedrock:${stack.region}:${stack.account}:knowledge-base/${knowledgeBase.attrKnowledgeBaseId}`,
+      `arn:${stack.partition}:bedrock:${stack.region}:${stack.account}:knowledge-base/${productKnowledgeBase.attrKnowledgeBaseId}`,
+    ],
   }));
   runtimeRole.addToPolicy(new iam.PolicyStatement({
     actions: ['bedrock-agentcore:InvokeGateway'],
@@ -696,6 +801,7 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
       CONFIG_TABLE_NAME: configTable.tableName,
       MEMORY_ID: memory.attrMemoryId,
       KNOWLEDGE_BASE_ID: knowledgeBase.attrKnowledgeBaseId,
+      PRODUCT_KNOWLEDGE_BASE_ID: productKnowledgeBase.attrKnowledgeBaseId,
       WEB_SEARCH_GATEWAY_URL: webSearchGatewayUrl,
       WEB_SEARCH_GATEWAY_REGION: WEB_SEARCH_REGION,
       UNIFIED_TRACES_DESTINATION_ENABLED: 'true',
@@ -706,7 +812,13 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     },
     tracingEnabled: true,
   });
-  runtime.node.addDependency(memory, knowledgeBase, webSearchGateway, ...deployedGuardrails.guardrails);
+  runtime.node.addDependency(
+    memory,
+    knowledgeBase,
+    productKnowledgeBase,
+    webSearchGateway,
+    ...deployedGuardrails.guardrails,
+  );
   configTable.grantReadData(runtimeRole);
   runtime.addEndpoint('LiveEndpoint', {
     version: runtime.agentRuntimeVersion ?? '1',
@@ -845,6 +957,7 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     runtimeArn: runtime.agentRuntimeArn,
     memoryId: memory.attrMemoryId,
     knowledgeBaseId: knowledgeBase.attrKnowledgeBaseId,
+    productKnowledgeBaseId: productKnowledgeBase.attrKnowledgeBaseId,
     webSearchGatewayUrl,
   };
 }

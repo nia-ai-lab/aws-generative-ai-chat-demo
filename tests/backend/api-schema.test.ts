@@ -58,6 +58,13 @@ describe('chat request validation', () => {
       guardrailKeys: ['content-safety', 'content-safety'],
     })).toThrow();
   });
+
+  it('accepts the separate fictional product RAG tool', () => {
+    expect(chatRequestSchema.parse({
+      ...validChat,
+      toolKeys: ['product-rag'],
+    }).toolKeys).toEqual(['product-rag']);
+  });
 });
 
 describe('admin config validation', () => {
@@ -69,7 +76,7 @@ describe('admin config validation', () => {
       enabledModelKeys: ['claude-sonnet-5'],
       defaultSystemPrompt: '',
       requiredGuardrailKeys: [],
-      enabledToolKeys: ['web-search', 'rag'],
+      enabledToolKeys: ['web-search', 'rag', 'product-rag'],
       usdToJpyRate: 150,
     });
     expect(result.defaultSystemPrompt).toBe('');

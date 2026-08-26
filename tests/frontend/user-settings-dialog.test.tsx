@@ -12,7 +12,7 @@ describe('UserSettingsDialog', () => {
         guardrailKeys={['denied-topic-travel', 'blocked-word-pineapple']}
         requiredGuardrailKeys={['content-safety', 'prompt-attack']}
         toolKeys={['rag']}
-        availableToolKeys={['web-search', 'rag']}
+        availableToolKeys={['web-search', 'rag', 'product-rag']}
         onClose={() => undefined}
         onSave={() => undefined}
       />,
@@ -32,6 +32,7 @@ describe('UserSettingsDialog', () => {
     expect(html).toContain('管理者必須: コンテンツ保護 / プロンプト攻撃対策');
     expect(html).toContain('Web検索');
     expect(html).toContain('RAG（社内規定検索）');
+    expect(html).toContain('RAG（製品情報検索）');
     expect(html).toContain('dialog-header-actions');
     expect((html.match(/>キャンセル<\/button>/g) ?? [])).toHaveLength(2);
     expect((html.match(/>適用<\/button>/g) ?? [])).toHaveLength(2);

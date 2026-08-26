@@ -7,6 +7,6 @@ describe('default application config', () => {
     expect(defaultConfig().participantAccessEnabled).toBe(true);
     expect(defaultConfig().requiredGuardrailKeys).toEqual([]);
     expect(defaultConfig().usdToJpyRate).toBe(150);
-    expect(defaultConfig().enabledToolKeys).toEqual(['web-search', 'rag']);
+    expect(defaultConfig().enabledToolKeys).toEqual(['web-search', 'rag', 'product-rag']);
   });
 });

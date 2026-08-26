@@ -30,6 +30,7 @@ def test_runtime_session_id_is_accepted() -> None:
     assert invocation.runtimeSessionId == "b" * 64
     assert invocation.webSearchEnabled is False
     assert invocation.ragEnabled is False
+    assert invocation.productRagEnabled is False
 
 
 def test_runtime_session_id_must_be_server_derived_hash() -> None:

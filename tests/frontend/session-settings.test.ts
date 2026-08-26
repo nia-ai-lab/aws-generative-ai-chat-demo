@@ -42,8 +42,8 @@ describe('participant generation settings', () => {
 
   it('keeps tool opt-ins off by default and isolated to sessionStorage', () => {
     expect(getToolKeys()).toEqual([]);
-    setToolKeys(['web-search', 'rag']);
-    expect(getToolKeys()).toEqual(['web-search', 'rag']);
+    setToolKeys(['web-search', 'rag', 'product-rag']);
+    expect(getToolKeys()).toEqual(['web-search', 'rag', 'product-rag']);
     expect(localStorage.length).toBe(0);
   });
 });

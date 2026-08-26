@@ -16,7 +16,7 @@ describe('AdminSettingsDialog', () => {
           enabledModelKeys: ['claude-sonnet-5', 'nova-2-lite'],
           defaultSystemPrompt: '',
           requiredGuardrailKeys: ['content-safety', 'prompt-attack'],
-          enabledToolKeys: ['web-search', 'rag'],
+          enabledToolKeys: ['web-search', 'rag', 'product-rag'],
           usdToJpyRate: 150,
           updatedAt: '2026-08-17T00:00:00.000Z',
           updatedBy: 'admin',
@@ -27,7 +27,7 @@ describe('AdminSettingsDialog', () => {
     );
 
     expect(html).toContain('必須Guardrail');
-    expect((html.match(/type="checkbox"/g) ?? [])).toHaveLength(12);
+    expect((html.match(/type="checkbox"/g) ?? [])).toHaveLength(13);
     expect(html).toContain('受講者の利用');
     expect(html).toContain('利用を許可');
     expect(html).toContain('Nova Micro');

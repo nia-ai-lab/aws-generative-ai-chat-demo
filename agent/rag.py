@@ -1,4 +1,4 @@
-"""Retrieval from the training knowledge base."""
+"""Retrieval from the separate policy and fictional product knowledge bases."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from botocore.config import Config
 
 REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 KNOWLEDGE_BASE_ID = os.getenv("KNOWLEDGE_BASE_ID", "")
+PRODUCT_KNOWLEDGE_BASE_ID = os.getenv("PRODUCT_KNOWLEDGE_BASE_ID", "")
 
 POLICY_TITLES = {
     "01-work-hours": "就業・勤務時間規程",
@@ -27,6 +28,16 @@ POLICY_TITLES = {
     "10-harassment": "ハラスメント防止・相談規程",
     "11-side-jobs": "副業・利益相反規程",
     "12-device-management": "端末・記録媒体管理規程",
+}
+
+PRODUCT_TITLES = {
+    "01-product-catalog": "製品ラインアップ",
+    "02-ap-500-manual": "蒼空エアピュア AP-500 取扱説明書",
+    "03-ap-500-troubleshooting": "蒼空エアピュア AP-500 故障診断・FAQ",
+    "04-swd-900-manual": "蒼空ドラムウォッシュ SWD-900 取扱説明書",
+    "05-warranty": "製品保証規定",
+    "06-safety-notices": "製品安全上の重要なお知らせ",
+    "07-customer-support-policy": "顧客サポート対応方針",
 }
 
 _client = boto3.client(
@@ -63,21 +74,32 @@ def _source_uri(result: dict[str, Any]) -> str:
     return ""
 
 
-def _title_from_uri(uri: str, index: int, text: str) -> str:
+def _title_from_uri(
+    uri: str,
+    index: int,
+    text: str,
+    titles: dict[str, str] = POLICY_TITLES,
+    fallback_label: str = "社内規定",
+) -> str:
     filename = PurePosixPath(uri).name.removesuffix(".md") if uri else ""
-    if filename in POLICY_TITLES:
-        return POLICY_TITLES[filename]
+    if filename in titles:
+        return titles[filename]
     first_line = text.splitlines()[0].strip() if text.splitlines() else ""
     if first_line.startswith("#"):
         return first_line.lstrip("# ").strip()
-    return filename or f"社内規定 {index + 1}"
+    return filename or f"{fallback_label} {index + 1}"
 
 
-def _retrieve_sync(query: str) -> list[RagResult]:
-    if not KNOWLEDGE_BASE_ID:
+def _retrieve_sync(
+    query: str,
+    knowledge_base_id: str,
+    titles: dict[str, str],
+    fallback_label: str,
+) -> list[RagResult]:
+    if not knowledge_base_id:
         raise RuntimeError("Knowledge base is not configured.")
     response = _client.retrieve(
-        knowledgeBaseId=KNOWLEDGE_BASE_ID,
+        knowledgeBaseId=knowledge_base_id,
         retrievalQuery={"text": query},
         retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": 4}},
     )
@@ -89,10 +111,25 @@ def _retrieve_sync(query: str) -> list[RagResult]:
             continue
         uri = _source_uri(item)
         clean_text = text.strip()
-        results.append(RagResult(title=_title_from_uri(uri, index, clean_text), text=clean_text, uri=uri))
+        results.append(RagResult(
+            title=_title_from_uri(uri, index, clean_text, titles, fallback_label),
+            text=clean_text,
+            uri=uri,
+        ))
     return results
 
 
 async def retrieve_policies(query: str) -> list[RagResult]:
     """Retrieve the four most relevant fictional policy chunks."""
-    return await asyncio.to_thread(_retrieve_sync, query)
+    return await asyncio.to_thread(_retrieve_sync, query, KNOWLEDGE_BASE_ID, POLICY_TITLES, "社内規定")
+
+
+async def retrieve_products(query: str) -> list[RagResult]:
+    """Retrieve the four most relevant fictional home-appliance chunks."""
+    return await asyncio.to_thread(
+        _retrieve_sync,
+        query,
+        PRODUCT_KNOWLEDGE_BASE_ID,
+        PRODUCT_TITLES,
+        "製品資料",
+    )

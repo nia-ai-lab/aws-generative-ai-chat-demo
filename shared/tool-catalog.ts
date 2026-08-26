@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const TOOL_KEYS = ['web-search', 'rag'] as const;
+export const TOOL_KEYS = ['web-search', 'rag', 'product-rag'] as const;
 export type ToolKey = (typeof TOOL_KEYS)[number];
 
 export const toolKeySchema = z.enum(TOOL_KEYS);
@@ -20,6 +20,10 @@ export const TOOL_CATALOG: Record<ToolKey, {
   rag: {
     label: 'RAG（社内規定検索）',
     description: '架空企業の社内規定を毎回検索し、回答の根拠にします。',
+  },
+  'product-rag': {
+    label: 'RAG（製品情報検索）',
+    description: '架空の家電製品資料を毎回検索し、顧客サポート回答の根拠にします。',
   },
 };
 

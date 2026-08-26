@@ -11,6 +11,7 @@
 - [デプロイ・運用ガイド](./docs/deployment-guide.md)
 - [モジュール別デモ実施ガイド](./docs/module-demo-guide.md)
 - [Web検索・RAGデモガイド](./docs/tool-rag-demo-guide.md)
+- [顧客サポートで学ぶ責任あるAIデモガイド](./docs/customer-support-responsible-ai-demo-guide.md)
 
 ## Planned architecture
 
@@ -38,7 +39,7 @@
 - 応答ごとのInput / Outputトークン数とモデル推論料金（日本円・概算）の折りたたみ表示
 - ブラウザセッションごとに複数選択できる事前定義Bedrock Guardrailsと、管理者が解除不能にできる必須Guardrail
 - ブラウザセッションごとにオプトインできるAgentCore Web Search（引用元表示・最大2検索）
-- 架空企業の日本語社内規定を検索するBedrock Knowledge Bases + S3 VectorsのRAG
+- 架空企業の日本語社内規定と架空家電資料を別々に検索するBedrock Knowledge Bases + S3 VectorsのRAG
 - 管理者によるWeb検索・RAGの利用可否設定
 - KMS暗号化された7日保持の会話監査ログ
 - Amplify Gen 2とCDK TypeScriptによる一括デプロイ

@@ -194,7 +194,7 @@ TypeScript で実装する。読み取りと管理更新は関数またはハン
   ],
   "defaultSystemPrompt": "",
   "requiredGuardrailKeys": [],
-  "enabledToolKeys": ["web-search", "rag"],
+  "enabledToolKeys": ["web-search", "rag", "product-rag"],
   "usdToJpyRate": 150,
   "updatedAt": "2026-08-16T00:00:00Z",
   "updatedBy": "cognito-sub"
@@ -266,9 +266,11 @@ Web Search connectorは提供リージョンである`us-east-1`にAgentCore Gat
 
 #### RAG
 
-東京リージョンにS3データソース、Bedrock Knowledge Base、Titan Text Embeddings V2（1,024次元）、S3 Vectorsを作成する。OpenSearch ServiceとOpenSearch Serverlessは使用しない。文書は公開リポジトリ内の架空企業「蒼空フロンティア株式会社」の日本語社内規定だけを対象とする。
+東京リージョンにS3データソース、Bedrock Knowledge Base、Titan Text Embeddings V2（1,024次元）、S3 Vectorsを作成する。OpenSearch ServiceとOpenSearch Serverlessは使用しない。社内規定用と製品情報用は別のKnowledge Base、データソース、S3 Vectorsインデックスとし、取得経路を分離する。ソースS3バケットは共有するが、社内規定は`policies/`、架空家電資料は`products/`の別プレフィックスに配置する。
 
-受講者がRAGをオンにした各メッセージで`Retrieve`を1回呼び出し、上位4チャンクをモデルの一時参考情報へ追加する。取得チャンクは命令ではなくデータとして扱い、チャンク中の命令文を実行しない旨をモデルへ伝える。取得した文書名と抜粋は信頼済み参照元として表示し、会話履歴やDynamoDBへ利用者設定として保存しない。
+受講者が選択したRAGごとに各メッセージで`Retrieve`を1回呼び出し、上位4チャンクをモデルの一時参考情報へ追加する。両RAGを選択した場合は2つの取得を並行実行し、参考情報に「社内規定」「製品資料」の種別を付ける。取得チャンクは命令ではなくデータとして扱い、チャンク中の命令文を実行しない旨をモデルへ伝える。取得した文書名と抜粋は信頼済み参照元として表示し、会話履歴やDynamoDBへ利用者設定として保存しない。
+
+製品情報RAGは、蒼空エアピュアAP-500と蒼空ドラムウォッシュSWD-900の取扱説明書、FAQ、保証、安全、顧客対応方針を対象とする。同じ`E17`でも製品ごとに意味が異なる文書を含め、型番がない質問でモデルが確認質問を行う責任あるAIデモに使用する。実在製品や実顧客情報は含めない。
 
 モデル呼び出しには出力上限を明示し、未指定の最大値を利用しない。
 
@@ -589,7 +591,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 - 最大アウトプットトークン（初期値1,024）
 - Guardrail（初期値なし。事前定義プリセットをチェックボックスで複数選択）
 - 管理者必須 Guardrail がある場合は解除不能であることを表示
-- Web検索、RAG（社内規定検索）。初期値は両方オフで、管理者が許可した項目だけを表示
+- Web検索、RAG（社内規定検索）、RAG（製品情報検索）。初期値はすべてオフで、管理者が許可した項目だけを表示
 - デフォルトに戻す（Temperature、Top P、最大アウトプットトークンを初期値へ戻し、ペルソナは維持。「適用」で確定）
 - 適用
 - キャンセル
@@ -602,7 +604,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 - 有効モデル
 - 既定モデル
 - 必須 Guardrail（初期値なし。チェックボックスで複数選択）
-- 利用可能なツール（Web検索、RAG）
+- 利用可能なツール（Web検索、社内規定RAG、製品情報RAG）
 - USD/JPY換算レート（初期値150、1–1,000）
 - 保存
 - キャンセル

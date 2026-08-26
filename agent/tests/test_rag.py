@@ -1,4 +1,4 @@
-from rag import _title_from_uri
+from rag import PRODUCT_TITLES, _title_from_uri
 
 
 def test_policy_title_is_derived_from_source_uri_for_mid_document_chunk() -> None:
@@ -13,3 +13,15 @@ def test_policy_title_is_derived_from_source_uri_for_mid_document_chunk() -> Non
 
 def test_heading_is_used_for_an_unknown_document() -> None:
     assert _title_from_uri("s3://training/policies/custom.md", 0, "# 独自規程\n本文") == "独自規程"
+
+
+def test_product_title_is_derived_from_separate_product_catalog() -> None:
+    title = _title_from_uri(
+        "s3://training/products/03-ap-500-troubleshooting.md",
+        0,
+        "AP-500のE17は送風ファンの回転異常です。",
+        PRODUCT_TITLES,
+        "製品資料",
+    )
+
+    assert title == "蒼空エアピュア AP-500 故障診断・FAQ"

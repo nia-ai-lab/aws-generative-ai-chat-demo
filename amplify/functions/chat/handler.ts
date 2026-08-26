@@ -161,6 +161,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
         guardrailVersion: guardrail.guardrailVersion,
         webSearchEnabled: effectiveToolKeys.includes('web-search'),
         ragEnabled: effectiveToolKeys.includes('rag'),
+        productRagEnabled: effectiveToolKeys.includes('product-rag'),
       }),
       signal: AbortSignal.timeout(85_000),
     });

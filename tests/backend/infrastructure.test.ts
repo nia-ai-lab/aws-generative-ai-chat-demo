@@ -176,6 +176,7 @@ describe('application infrastructure', () => {
 
   it('creates a serverless S3 Vectors knowledge base and deployment ingestion', () => {
     template.resourceCountIs('AWS::S3Vectors::VectorBucket', 1);
+    template.resourceCountIs('AWS::S3Vectors::Index', 2);
     template.hasResourceProperties('AWS::S3Vectors::Index', {
       DataType: 'float32',
       Dimension: 1024,
@@ -184,16 +185,28 @@ describe('application infrastructure', () => {
         NonFilterableMetadataKeys: ['AMAZON_BEDROCK_TEXT', 'AMAZON_BEDROCK_METADATA'],
       },
     });
+    template.resourceCountIs('AWS::Bedrock::KnowledgeBase', 2);
     template.hasResourceProperties('AWS::Bedrock::KnowledgeBase', {
       KnowledgeBaseConfiguration: Match.objectLike({ Type: 'VECTOR' }),
       StorageConfiguration: Match.objectLike({ Type: 'S3_VECTORS' }),
     });
+    template.hasResourceProperties('AWS::Bedrock::KnowledgeBase', {
+      Name: 'GenerativeAIChatFictionalProducts',
+      Description: 'Fictional Japanese home-appliance documents for the customer support RAG demo.',
+    });
+    template.resourceCountIs('AWS::Bedrock::DataSource', 2);
     template.hasResourceProperties('AWS::Bedrock::DataSource', {
       DataSourceConfiguration: Match.objectLike({ Type: 'S3' }),
     });
-    expect(Object.values(template.findResources('Custom::AWS')).some((resource: any) =>
-      JSON.stringify(resource.Properties?.Create).includes('startIngestionJob'),
-    )).toBe(true);
+    const ingestions = Object.values(template.findResources('Custom::AWS')).filter((resource: any) =>
+      JSON.stringify(resource.Properties?.Create).includes('startIngestionJob'));
+    expect(ingestions).toHaveLength(2);
+    template.hasResourceProperties('AWS::BedrockAgentCore::Runtime', {
+      EnvironmentVariables: Match.objectLike({
+        KNOWLEDGE_BASE_ID: Match.anyValue(),
+        PRODUCT_KNOWLEDGE_BASE_ID: Match.anyValue(),
+      }),
+    });
   });
 
   it('provisions the cross-region managed Web Search gateway and grants Runtime invocation', () => {

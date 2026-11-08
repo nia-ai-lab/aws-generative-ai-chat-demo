@@ -6,6 +6,12 @@ export const MODEL_CATALOG = {
     // Claude Sonnet 5 and later reject non-default temperature and any top_p.
     supportsSamplingParameters: false,
   },
+  'claude-haiku-5-5': {
+    key: 'claude-haiku-5-5',
+    label: 'Claude Haiku 5.5',
+    inferenceProfileId: 'global.anthropic.claude-haiku-5-5',
+    supportsSamplingParameters: false,
+  },
   'nova-micro': {
     key: 'nova-micro',
     label: 'Nova Micro',

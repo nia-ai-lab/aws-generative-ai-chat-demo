@@ -27,7 +27,7 @@ describe('AdminSettingsDialog', () => {
     );
 
     expect(html).toContain('必須Guardrail');
-    expect((html.match(/type="checkbox"/g) ?? [])).toHaveLength(13);
+    expect((html.match(/type="checkbox"/g) ?? [])).toHaveLength(14);
     expect(html).toContain('受講者の利用');
     expect(html).toContain('利用を許可');
     expect(html).toContain('Nova Micro');

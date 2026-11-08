@@ -27,7 +27,7 @@ describe('stored model selection migration', () => {
   it('falls back to the catalog when nothing valid is stored', () => {
     expect(migrateModelSelection('retired-model', ['retired-model'])).toEqual({
       defaultModelKey: 'claude-sonnet-5-5',
-      enabledModelKeys: ['claude-sonnet-5-5', 'nova-micro', 'nova-2-lite', 'nova-pro'],
+      enabledModelKeys: ['claude-sonnet-5-5', 'claude-haiku-5-5', 'nova-micro', 'nova-2-lite', 'nova-pro'],
     });
   });
 });

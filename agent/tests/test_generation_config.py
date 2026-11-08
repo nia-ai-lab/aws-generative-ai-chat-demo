@@ -67,3 +67,17 @@ def test_model_omits_sampling_parameters_when_not_supplied(monkeypatch: pytest.M
     assert "top_p" not in captured
     assert captured["max_tokens"] == 1_024
 
+
+def test_model_forces_streaming_for_every_catalog_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_model(**kwargs: object) -> dict[str, object]:
+        captured.update(kwargs)
+        return kwargs
+
+    monkeypatch.setattr(graph, "ChatBedrockConverse", fake_model)
+    graph.model_for.cache_clear()
+    graph.model_for("global.anthropic.claude-haiku-5-5", None, None, 1_024, "", "")
+
+    assert captured["disable_streaming"] is False
+

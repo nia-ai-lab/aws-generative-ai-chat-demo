@@ -33,6 +33,15 @@ describe('model invocation cost estimates', () => {
     });
   });
 
+  it('uses the global cross-region rate for Claude Haiku 5.5', () => {
+    const estimate = estimateModelInvocationCost('claude-haiku-5-5', 1_000, 500, 150);
+    expect(estimate).toMatchObject({
+      inputUsdPerMillionTokens: 0.1,
+      outputUsdPerMillionTokens: 0.5,
+      totalCostJpy: 0.0525,
+    });
+  });
+
   it('does not estimate when usage or the conversion rate is invalid', () => {
     expect(estimateModelInvocationCost('nova-micro', undefined, 10, 150)).toBeUndefined();
     expect(estimateModelInvocationCost('nova-micro', -1, 10, 150)).toBeUndefined();

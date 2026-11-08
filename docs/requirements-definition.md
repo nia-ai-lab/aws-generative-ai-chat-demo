@@ -178,7 +178,7 @@
 | ID | 要件 |
 |---|---|
 | MODEL-01 | チャット画面で、管理者が有効化したモデルから一つを選択できること。 |
-| MODEL-02 | 初期候補は Claude Sonnet 5.5、Nova 2 Lite、Nova Micro、Nova Pro とすること。 |
+| MODEL-02 | 初期候補は Claude Sonnet 5.5、Claude Haiku 5.5、Nova 2 Lite、Nova Micro、Nova Pro とすること。 |
 | MODEL-03 | 管理者は有効モデルの組み合わせと既定モデルを変更できること。 |
 | MODEL-04 | 管理者が無効化したモデルは新規送信に利用できないこと。 |
 | MODEL-05 | API および Agent は、クライアントが送信したモデル ID が管理者設定の許可リストに含まれることを検証すること。 |
@@ -323,7 +323,7 @@
 - カスタムドメインは初期スコープ外とし、Amplify の標準ドメインを利用する。
 - 最大同時利用者数は 30 名とする。
 - CloudWatch Logs の保持期間は 7 日とする。
-- Claude Sonnet 5.5、Nova 2 Lite、Nova Micro、Nova Pro はクロスリージョン推論プロファイルを使用する。
+- Claude Sonnet 5.5、Claude Haiku 5.5、Nova 2 Lite、Nova Micro、Nova Pro はクロスリージョン推論プロファイルを使用する。
 - リソース削除を前提とするため、DynamoDB とログの削除保護は有効化しない。
 
 ## 10. 実装開始前の確認事項
@@ -332,7 +332,7 @@
 |---|---|---|
 | Q-01 | 最大同時受講者数 | **確定: 30 名** |
 | Q-02 | CloudWatch Logs の保持期間 | **確定: 7 日** |
-| Q-03 | Claude Sonnet 5.5、Nova 2 Lite、Nova Micro、Nova Pro のクロスリージョン推論を使用するか | **確定: 使用する** |
+| Q-03 | Claude Sonnet 5.5、Claude Haiku 5.5、Nova 2 Lite、Nova Micro、Nova Pro のクロスリージョン推論を使用するか | **確定: 使用する** |
 | Q-04 | 既定選択モデル | Claude Sonnet 5.5 |
 | Q-05 | カスタムドメインの要否 | 不要 |
 | Q-06 | Bedrock Guardrail の教材プリセット | **確定: デフォルトなし。コンテンツ保護、プロンプト攻撃、PII匿名化、旅行トピック、英単語pineapple禁止を事前定義** |

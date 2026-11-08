@@ -255,4 +255,12 @@ describe('application infrastructure', () => {
     expect(Object.keys(template.findResources('AWS::Bedrock::GuardrailVersion'))
       .every((logicalId) => logicalId.includes('VersionV3'))).toBe(true);
   });
+
+  it('lets the Runtime invoke every catalog model', () => {
+    const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
+    for (const profile of ['global.anthropic.claude-sonnet-5-5', 'global.anthropic.claude-haiku-5-5']) {
+      expect(policies).toContain(`inference-profile/${profile}`);
+    }
+    expect(policies).toContain('foundation-model/anthropic.claude-haiku-5-5*');
+  });
 });

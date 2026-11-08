@@ -728,10 +728,12 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
     resources: [
       `arn:${stack.partition}:bedrock:*:${stack.account}:inference-profile/global.anthropic.claude-sonnet-5-5`,
+      `arn:${stack.partition}:bedrock:*:${stack.account}:inference-profile/global.anthropic.claude-haiku-5-5`,
       `arn:${stack.partition}:bedrock:*:${stack.account}:inference-profile/jp.amazon.nova-2-lite-v1:0`,
       `arn:${stack.partition}:bedrock:*:${stack.account}:inference-profile/apac.amazon.nova-micro-v1:0`,
       `arn:${stack.partition}:bedrock:*:${stack.account}:inference-profile/apac.amazon.nova-pro-v1:0`,
       `arn:${stack.partition}:bedrock:*::foundation-model/anthropic.claude-sonnet-5-5*`,
+      `arn:${stack.partition}:bedrock:*::foundation-model/anthropic.claude-haiku-5-5*`,
       `arn:${stack.partition}:bedrock:*::foundation-model/amazon.nova-2-lite*`,
       `arn:${stack.partition}:bedrock:*::foundation-model/amazon.nova-micro*`,
       `arn:${stack.partition}:bedrock:*::foundation-model/amazon.nova-pro*`,

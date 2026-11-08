@@ -27,8 +27,16 @@ describe('model catalog', () => {
     expect(MODEL_KEYS).not.toContain('claude-sonnet-5');
   });
 
-  it('marks Claude Sonnet 5.5 as rejecting temperature and top_p', () => {
+  it('offers Claude Haiku 5.5 through its global inference profile', () => {
+    expect(MODEL_CATALOG['claude-haiku-5-5']).toMatchObject({
+      label: 'Claude Haiku 5.5',
+      inferenceProfileId: 'global.anthropic.claude-haiku-5-5',
+    });
+  });
+
+  it('marks Claude 5.5 models as rejecting temperature and top_p', () => {
     expect(supportsSamplingParameters('claude-sonnet-5-5')).toBe(false);
+    expect(supportsSamplingParameters('claude-haiku-5-5')).toBe(false);
     expect(supportsSamplingParameters('nova-2-lite')).toBe(true);
   });
 

@@ -67,6 +67,10 @@ def model_for(
         "max_retries": 2,
         "timeout": 70,
         "guardrails": guardrails,
+        # Every catalog model streams through ConverseStream, but langchain-aws only
+        # allow-lists some model IDs (Claude Haiku 5.5 would silently fall back to
+        # non-streaming Converse and produce no text deltas).
+        "disable_streaming": False,
     }
     # Newer Claude models reject sampling parameters; omit them unless explicitly set.
     if temperature is not None:
@@ -95,12 +99,45 @@ class ChatContext:
     rag_retrieval_count: int = 0
 
 
+def _is_reasoning_block(block: object) -> bool:
+    return isinstance(block, dict) and (
+        block.get("type") in {"reasoning_content", "reasoning", "thinking"}
+        or "reasoningContent" in block
+        or "reasoning_content" in block
+    )
+
+
+def without_prior_turn_reasoning(messages: Sequence[BaseMessage]) -> list[BaseMessage]:
+    """Drop model reasoning blocks from turns before the latest user message.
+
+    Participants can switch models within one conversation. Claude returns signed
+    reasoning blocks that Amazon Nova rejects, and Claude itself ignores reasoning
+    from earlier turns, so it is safe to omit it from history. Reasoning inside the
+    current turn is kept because Claude requires it to continue a tool-use loop.
+    """
+    last_human = max(
+        (index for index, message in enumerate(messages) if isinstance(message, HumanMessage)),
+        default=-1,
+    )
+    cleaned: list[BaseMessage] = []
+    for index, message in enumerate(messages):
+        if index < last_human and isinstance(message, AIMessage) and isinstance(message.content, list):
+            content = [block for block in message.content if not _is_reasoning_block(block)]
+            if len(content) != len(message.content):
+                if not content and not message.tool_calls:
+                    content = [{"type": "text", "text": "(no text response)"}]
+                message = message.model_copy(update={"content": content})
+        cleaned.append(message)
+    return cleaned
+
+
 def messages_for_model(
     system_prompt: str,
     rag_context: str,
     messages: Sequence[BaseMessage],
 ) -> list[BaseMessage]:
     """Prepend a system message only when an explicit system prompt exists."""
+    messages = without_prior_turn_reasoning(messages)
     combined = system_prompt
     if rag_context:
         rag_instruction = (

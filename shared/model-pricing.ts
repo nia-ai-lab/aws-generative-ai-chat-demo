@@ -41,6 +41,13 @@ const MODEL_PRICE_SCHEDULES: Record<ModelKey, readonly ModelPricePeriod[]> = {
     outputUsdPerMillionTokens: 10,
     priceVerifiedAt: '2026-11-08',
   }],
+  // Global cross-region rate for Claude Haiku 5.5 from the AWS Price List API, verified on 2026-11-08.
+  'claude-haiku-5-5': [{
+    effectiveFrom: '1970-01-01T00:00:00.000Z',
+    inputUsdPerMillionTokens: 0.1,
+    outputUsdPerMillionTokens: 0.5,
+    priceVerifiedAt: '2026-11-08',
+  }],
   'nova-micro': [{
     effectiveFrom: '1970-01-01T00:00:00.000Z',
     inputUsdPerMillionTokens: 0.042,

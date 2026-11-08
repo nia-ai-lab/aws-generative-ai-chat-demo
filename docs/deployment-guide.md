@@ -82,7 +82,7 @@ unset DEPLOY_ACCOUNT_ID AWS_REGION
 1. `/health` が `200` を返す。
 2. 受講者ユーザーと管理者ユーザーがログインできる。
 3. 一般受講者に管理ボタンが表示されず、管理APIの直接呼び出しも `403` になる。
-4. Claude Sonnet 5.5、Nova 2 Lite、Nova Micro、Nova Proで応答できる。
+4. Claude Sonnet 5.5、Claude Haiku 5.5、Nova 2 Lite、Nova Micro、Nova Proで応答できる。
 5. `AI Thinking...` の後に応答が逐次表示され、見出し、箇条書き、表、リンク、コードブロックなどのMarkdownが描画される。
 6. 同一会話では文脈を保持し、クリア後は以前の文脈を参照しない。
 7. 2つのブラウザセッションで同じ共有IDを使っても会話が混ざらない。

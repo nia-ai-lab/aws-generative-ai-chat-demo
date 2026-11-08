@@ -298,6 +298,9 @@ AgentCore Runtime は `runtimeSessionId` ごとに専用 microVM を割り当て
 | 論理キー | 表示名 | 推論プロファイル ID | 備考 |
 |---|---|---|---|
 | `claude-sonnet-5-5` | Claude Sonnet 5.5 | `global.anthropic.claude-sonnet-5-5` | Global cross-region inference |
+| `claude-haiku-5-5` | Claude Haiku 5.5 | `global.anthropic.claude-haiku-5-5` | Global cross-region inference |
+
+同じ会話の途中でモデルを切り替えられる。会話履歴はAgentCore Memoryにモデル非依存で保存され、Agentはモデル呼び出し直前に、最新のユーザー発話より前のターンからClaudeの推論ブロック（署名付き`reasoningContent`）を除去する。Amazon Novaは推論ブロックを含む履歴を`ValidationException`で拒否するためである。現在ターン内のツール呼び出しループでは、Claudeが推論ブロックの返却を必要とするため除去しない。Claude Sonnet 5.5 / Haiku 5.5はTemperatureとTop Pを受け付けないため、Chat Lambdaがこれらを送信しない。
 | `nova-2-lite` | Nova 2 Lite | `jp.amazon.nova-2-lite-v1:0` | Japan geographic cross-region inference profile |
 | `nova-micro` | Nova Micro | `apac.amazon.nova-micro-v1:0` | APAC cross-region inference |
 | `nova-pro` | Nova Pro | `apac.amazon.nova-pro-v1:0` | APAC cross-region inference |
@@ -333,6 +336,7 @@ Output料金(円) = Outputトークン数 × Output単価(USD / 1M tokens) × US
 | モデル | Input USD / 1M tokens | Output USD / 1M tokens | 適用期間 |
 |---|---:|---:|---|
 | Claude Sonnet 5.5 | 2.00 | 10.00 | 現行（Global cross-region、2026-11-08確認） |
+| Claude Haiku 5.5 | 0.10 | 0.50 | 現行（Global cross-region、2026-11-08 Price List API確認） |
 | Nova 2 Lite | 0.396 | 3.311 | 現行 |
 | Nova Micro | 0.042 | 0.168 | 現行 |
 | Nova Pro | 0.96 | 3.84 | 現行 |
@@ -468,6 +472,7 @@ sequenceDiagram
   "defaultModelKey": "claude-sonnet-5-5",
   "models": [
     {"key": "claude-sonnet-5-5", "label": "Claude Sonnet 5.5"},
+    {"key": "claude-haiku-5-5", "label": "Claude Haiku 5.5"},
     {"key": "nova-2-lite", "label": "Nova 2 Lite"},
     {"key": "nova-micro", "label": "Nova Micro"},
     {"key": "nova-pro", "label": "Nova Pro"}
@@ -933,7 +938,7 @@ Amplify Gen 2 は TypeScript の CDK custom resources をバックエンドと�
 
 - 最大同時受講者は 30 名とする。
 - CloudWatch Logs の保持期間は 7 日とする。
-- Claude Sonnet 5.5、Nova 2 Lite、Nova Micro、Nova Pro はクロスリージョン推論プロファイルを使用する。
+- Claude Sonnet 5.5、Claude Haiku 5.5、Nova 2 Lite、Nova Micro、Nova Pro はクロスリージョン推論プロファイルを使用する。
 
 Guardrailの教材プリセット、拒否トピック、禁止ワード、フィルター強度は確定済みである。既定選択モデルとカスタムドメインは要件定義書の Q-04〜Q-05 に従う。
 

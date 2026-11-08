@@ -17,31 +17,19 @@ describe('model invocation cost estimates', () => {
     expect(estimate).toMatchObject({ inputCostJpy: input, outputCostJpy: output, totalCostJpy: total });
   });
 
-  it('switches Claude Sonnet 5 from launch pricing after August 2026', () => {
-    const promotional = estimateModelInvocationCost(
-      'claude-sonnet-5',
+  it('uses the global cross-region rate for Claude Sonnet 5.5', () => {
+    const estimate = estimateModelInvocationCost(
+      'claude-sonnet-5-5',
       1_000,
       500,
       150,
-      new Date('2026-08-31T23:59:59.000Z'),
-    );
-    const standard = estimateModelInvocationCost(
-      'claude-sonnet-5',
-      1_000,
-      500,
-      150,
-      new Date('2026-09-01T00:00:00.000Z'),
+      new Date('2026-11-08T00:00:00.000Z'),
     );
 
-    expect(promotional).toMatchObject({
+    expect(estimate).toMatchObject({
       inputUsdPerMillionTokens: 2,
       outputUsdPerMillionTokens: 10,
       totalCostJpy: 1.05,
-    });
-    expect(standard).toMatchObject({
-      inputUsdPerMillionTokens: 3,
-      outputUsdPerMillionTokens: 15,
-      totalCostJpy: 1.575,
     });
   });
 

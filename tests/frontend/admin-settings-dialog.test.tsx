@@ -12,8 +12,8 @@ describe('AdminSettingsDialog', () => {
         config={{
           configVersion: 2,
           participantAccessEnabled: true,
-          defaultModelKey: 'claude-sonnet-5',
-          enabledModelKeys: ['claude-sonnet-5', 'nova-2-lite'],
+          defaultModelKey: 'claude-sonnet-5-5',
+          enabledModelKeys: ['claude-sonnet-5-5', 'nova-2-lite'],
           defaultSystemPrompt: '',
           requiredGuardrailKeys: ['content-safety', 'prompt-attack'],
           enabledToolKeys: ['web-search', 'rag', 'product-rag'],

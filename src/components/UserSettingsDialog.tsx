@@ -12,10 +12,12 @@ import {
 import { Dialog } from './Dialog';
 import { PromptEditor } from './PromptEditor';
 import { TOOL_CATALOG, type ToolKey } from '../../shared/tool-catalog';
+import { MODEL_CATALOG, supportsSamplingParameters, type ModelKey } from '../../shared/model-catalog';
 
 interface UserSettingsDialogProps {
   open: boolean;
   value: string;
+  modelKey: ModelKey;
   generationConfig: GenerationConfig;
   guardrailKeys: GuardrailPolicyKey[];
   requiredGuardrailKeys: GuardrailPolicyKey[];
@@ -33,6 +35,7 @@ interface UserSettingsDialogProps {
 export function UserSettingsDialog({
   open,
   value,
+  modelKey,
   generationConfig,
   guardrailKeys,
   requiredGuardrailKeys,
@@ -158,6 +161,11 @@ export function UserSettingsDialog({
       {requiredGuardrailKeys.length > 0 && (
         <p className="required-setting">
           管理者必須: {requiredGuardrailKeys.map((key) => GUARDRAIL_CATALOG[key].label).join(' / ')}
+        </p>
+      )}
+      {!supportsSamplingParameters(modelKey) && (
+        <p className="required-setting">
+          {MODEL_CATALOG[modelKey].label} は Temperature と Top P の指定に対応していないため、モデル既定値で応答します。比較には Nova モデルを使用してください。
         </p>
       )}
       <div className="generation-settings">

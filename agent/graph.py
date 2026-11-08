@@ -46,7 +46,7 @@ def web_search(query: str) -> str:
 @lru_cache(maxsize=32)
 def model_for(
     model_id: str,
-    temperature: float,
+    temperature: float | None,
     top_p: float | None,
     max_output_tokens: int,
     guardrail_id: str,
@@ -63,12 +63,14 @@ def model_for(
     model_options: dict[str, Any] = {
         "model": model_id,
         "region_name": REGION,
-        "temperature": temperature,
         "max_tokens": max_output_tokens,
         "max_retries": 2,
         "timeout": 70,
         "guardrails": guardrails,
     }
+    # Newer Claude models reject sampling parameters; omit them unless explicitly set.
+    if temperature is not None:
+        model_options["temperature"] = temperature
     if top_p is not None:
         model_options["top_p"] = top_p
     return ChatBedrockConverse(
@@ -81,7 +83,7 @@ class ChatContext:
     model_id: str
     admin_system_prompt: str
     user_system_prompt: str
-    temperature: float
+    temperature: float | None
     top_p: float | None
     max_output_tokens: int
     guardrail_id: str

@@ -8,6 +8,7 @@ describe('UserSettingsDialog', () => {
       <UserSettingsDialog
         open
         value=""
+        modelKey="nova-2-lite"
         generationConfig={{ temperature: 0.3, topP: null, maxOutputTokens: 1_024 }}
         guardrailKeys={['denied-topic-travel', 'blocked-word-pineapple']}
         requiredGuardrailKeys={['content-safety', 'prompt-attack']}
@@ -37,5 +38,24 @@ describe('UserSettingsDialog', () => {
     expect((html.match(/>キャンセル<\/button>/g) ?? [])).toHaveLength(2);
     expect((html.match(/>適用<\/button>/g) ?? [])).toHaveLength(2);
     expect(html).not.toContain('aria-label="閉じる"');
+    expect(html).not.toContain('Temperature と Top P の指定に対応していない');
+  });
+
+  it('explains that Claude Sonnet 5.5 ignores sampling parameters', () => {
+    const html = renderToStaticMarkup(
+      <UserSettingsDialog
+        open
+        value=""
+        modelKey="claude-sonnet-5-5"
+        generationConfig={{ temperature: 0.3, topP: null, maxOutputTokens: 1_024 }}
+        guardrailKeys={[]}
+        requiredGuardrailKeys={[]}
+        toolKeys={[]}
+        availableToolKeys={[]}
+        onClose={() => undefined}
+        onSave={() => undefined}
+      />,
+    );
+    expect(html).toContain('Claude Sonnet 5.5 は Temperature と Top P の指定に対応していない');
   });
 });

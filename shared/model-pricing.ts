@@ -34,21 +34,13 @@ export interface ModelUsage {
 // Standard on-demand model rates verified against the AWS Bedrock pricing page and
 // Price List API for the Tokyo source region on 2026-08-17.
 const MODEL_PRICE_SCHEDULES: Record<ModelKey, readonly ModelPricePeriod[]> = {
-  'claude-sonnet-5': [
-    {
-      effectiveFrom: '1970-01-01T00:00:00.000Z',
-      effectiveUntil: '2026-09-01T00:00:00.000Z',
-      inputUsdPerMillionTokens: 2,
-      outputUsdPerMillionTokens: 10,
-      priceVerifiedAt: '2026-08-17',
-    },
-    {
-      effectiveFrom: '2026-09-01T00:00:00.000Z',
-      inputUsdPerMillionTokens: 3,
-      outputUsdPerMillionTokens: 15,
-      priceVerifiedAt: '2026-08-17',
-    },
-  ],
+  // Global cross-region rate for Claude Sonnet 5.5, verified on 2026-11-08.
+  'claude-sonnet-5-5': [{
+    effectiveFrom: '1970-01-01T00:00:00.000Z',
+    inputUsdPerMillionTokens: 2,
+    outputUsdPerMillionTokens: 10,
+    priceVerifiedAt: '2026-11-08',
+  }],
   'nova-micro': [{
     effectiveFrom: '1970-01-01T00:00:00.000Z',
     inputUsdPerMillionTokens: 0.042,

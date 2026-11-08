@@ -37,7 +37,11 @@ const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(currentDirectory, '../..');
 const RAG_DOCUMENT_VERSION = 1;
 const PRODUCT_RAG_DOCUMENT_VERSION = 1;
-const WEB_SEARCH_REGION = 'us-east-1';
+// AgentCore Web Search has been available in Tokyo since 2026-08, so the gateway lives next to the Runtime.
+const WEB_SEARCH_REGION = 'ap-northeast-1';
+// Earlier releases created the gateway in us-east-1; the provider keeps permissions there to delete it.
+const LEGACY_WEB_SEARCH_REGION = 'us-east-1';
+const WEB_SEARCH_MANAGED_REGIONS = [WEB_SEARCH_REGION, LEGACY_WEB_SEARCH_REGION];
 
 interface ApplicationStackProps {
   userPool: cognito.IUserPool;
@@ -591,7 +595,6 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
   });
   gatewayExecutionPolicy.attachToRole(gatewayRole);
 
-  const gatewayProviderEnvironment = { TARGET_REGION: WEB_SEARCH_REGION };
   const gatewayOnEvent = new lambdaNode.NodejsFunction(scope, 'WebSearchGatewayOnEvent', {
     functionName: 'generative-ai-chat-web-search-provider',
     entry: path.join(repositoryRoot, 'amplify/functions/gateway-provider/handler.ts'),
@@ -600,7 +603,6 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     architecture: lambda.Architecture.ARM_64,
     memorySize: 256,
     timeout: Duration.seconds(60),
-    environment: gatewayProviderEnvironment,
     logGroup: functionLogGroup(scope, 'WebSearchGatewayOnEventLogs', 'generative-ai-chat-web-search-provider', logKey),
     bundling: { minify: true, sourceMap: true, target: 'node22', bundleAwsSDK: true },
   });
@@ -612,7 +614,6 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     architecture: lambda.Architecture.ARM_64,
     memorySize: 256,
     timeout: Duration.seconds(60),
-    environment: gatewayProviderEnvironment,
     logGroup: functionLogGroup(scope, 'WebSearchGatewayIsCompleteLogs', 'generative-ai-chat-web-search-provider-check', logKey),
     bundling: { minify: true, sourceMap: true, target: 'node22', bundleAwsSDK: true },
   });
@@ -633,14 +634,14 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     providerFunction.addToRolePolicy(new iam.PolicyStatement({
       actions: ['bedrock-agentcore:CreateWorkloadIdentity'],
       resources: [
-        `arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:workload-identity-directory/default`,
-        `arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:workload-identity-directory/default/workload-identity/*`,
+        ...WEB_SEARCH_MANAGED_REGIONS.map((region) => `arn:${stack.partition}:bedrock-agentcore:${region}:${stack.account}:workload-identity-directory/default`),
+        ...WEB_SEARCH_MANAGED_REGIONS.map((region) => `arn:${stack.partition}:bedrock-agentcore:${region}:${stack.account}:workload-identity-directory/default/workload-identity/*`),
       ],
     }));
     providerFunction.addToRolePolicy(new iam.PolicyStatement({
       actions: ['bedrock-agentcore:ListWorkloadIdentities'],
       resources: [
-        `arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:workload-identity-directory/default`,
+        ...WEB_SEARCH_MANAGED_REGIONS.map((region) => `arn:${stack.partition}:bedrock-agentcore:${region}:${stack.account}:workload-identity-directory/default`),
       ],
     }));
     providerFunction.addToRolePolicy(new iam.PolicyStatement({
@@ -649,7 +650,7 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
         'bedrock-agentcore:DeleteWorkloadIdentity',
       ],
       resources: [
-        `arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:workload-identity-directory/default/workload-identity/*`,
+        ...WEB_SEARCH_MANAGED_REGIONS.map((region) => `arn:${stack.partition}:bedrock-agentcore:${region}:${stack.account}:workload-identity-directory/default/workload-identity/*`),
       ],
     }));
     providerFunction.addToRolePolicy(new iam.PolicyStatement({
@@ -659,8 +660,8 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
         'bedrock-agentcore:ListTagsForResource',
       ],
       resources: [
-        `arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:gateway/*`,
-        `arn:${stack.partition}:bedrock-agentcore:${WEB_SEARCH_REGION}:${stack.account}:workload-identity-directory/default/workload-identity/*`,
+        ...WEB_SEARCH_MANAGED_REGIONS.map((region) => `arn:${stack.partition}:bedrock-agentcore:${region}:${stack.account}:gateway/*`),
+        ...WEB_SEARCH_MANAGED_REGIONS.map((region) => `arn:${stack.partition}:bedrock-agentcore:${region}:${stack.account}:workload-identity-directory/default/workload-identity/*`),
       ],
     }));
     providerFunction.addToRolePolicy(new iam.PolicyStatement({
@@ -686,6 +687,8 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     properties: {
       GatewayName: 'generative-ai-chat-web-search',
       GatewayRoleArn: gatewayRole.roleArn,
+      // Changing the region replaces the gateway; CloudFormation then deletes the old one in its region.
+      Region: WEB_SEARCH_REGION,
     },
   });
   webSearchGateway.node.addDependency(gatewayExecutionPolicy);
@@ -719,11 +722,11 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
   runtimeRole.addToPolicy(new iam.PolicyStatement({
     actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
     resources: [
-      `arn:${stack.partition}:bedrock:*:${stack.account}:inference-profile/global.anthropic.claude-sonnet-5`,
+      `arn:${stack.partition}:bedrock:*:${stack.account}:inference-profile/global.anthropic.claude-sonnet-5-5`,
       `arn:${stack.partition}:bedrock:*:${stack.account}:inference-profile/jp.amazon.nova-2-lite-v1:0`,
       `arn:${stack.partition}:bedrock:*:${stack.account}:inference-profile/apac.amazon.nova-micro-v1:0`,
       `arn:${stack.partition}:bedrock:*:${stack.account}:inference-profile/apac.amazon.nova-pro-v1:0`,
-      `arn:${stack.partition}:bedrock:*::foundation-model/anthropic.claude-sonnet-5*`,
+      `arn:${stack.partition}:bedrock:*::foundation-model/anthropic.claude-sonnet-5-5*`,
       `arn:${stack.partition}:bedrock:*::foundation-model/amazon.nova-2-lite*`,
       `arn:${stack.partition}:bedrock:*::foundation-model/amazon.nova-micro*`,
       `arn:${stack.partition}:bedrock:*::foundation-model/amazon.nova-pro*`,

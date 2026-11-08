@@ -10,7 +10,9 @@ from typing import Any
 from mcp import ClientSession
 from mcp_proxy_for_aws.client import aws_iam_streamablehttp_client
 
-GATEWAY_REGION = os.getenv("WEB_SEARCH_GATEWAY_REGION", "us-east-1")
+GATEWAY_REGION = os.getenv(
+    "WEB_SEARCH_GATEWAY_REGION", os.getenv("AWS_REGION", "ap-northeast-1")
+)
 GATEWAY_URL = os.getenv("WEB_SEARCH_GATEWAY_URL", "")
 
 

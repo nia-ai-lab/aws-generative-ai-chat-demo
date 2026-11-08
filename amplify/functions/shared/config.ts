@@ -6,7 +6,12 @@ import {
   guardrailKeySchema,
   guardrailPolicyKeysSchema,
 } from '../../../shared/guardrail-catalog.js';
-import { DEFAULT_MODEL_KEY, MODEL_KEYS } from '../../../shared/model-catalog.js';
+import {
+  DEFAULT_MODEL_KEY,
+  MODEL_KEYS,
+  migrateModelKey,
+  type ModelKey,
+} from '../../../shared/model-catalog.js';
 import { DEFAULT_USD_TO_JPY_RATE } from '../../../shared/model-pricing.js';
 import { DEFAULT_ENABLED_TOOL_KEYS, toolKeysSchema } from '../../../shared/tool-catalog.js';
 
@@ -32,6 +37,22 @@ export function defaultConfig(): AdminConfig {
   };
 }
 
+/** Map stored model keys onto the current catalog so retired models never break config reads. */
+export function migrateModelSelection(
+  storedDefault: unknown,
+  storedEnabled: unknown,
+): { defaultModelKey: ModelKey; enabledModelKeys: ModelKey[] } {
+  const enabled = Array.isArray(storedEnabled)
+    ? [...new Set(storedEnabled.map(migrateModelKey).filter((key): key is ModelKey => key !== undefined))]
+    : [];
+  const enabledModelKeys = enabled.length > 0 ? enabled : [...MODEL_KEYS];
+  const migratedDefault = migrateModelKey(storedDefault);
+  const defaultModelKey = migratedDefault && enabledModelKeys.includes(migratedDefault)
+    ? migratedDefault
+    : enabledModelKeys.includes(DEFAULT_MODEL_KEY) ? DEFAULT_MODEL_KEY : enabledModelKeys[0];
+  return { defaultModelKey, enabledModelKeys };
+}
+
 export async function readConfig(): Promise<AdminConfig> {
   const tableName = process.env.CONFIG_TABLE_NAME;
   if (!tableName) throw new Error('CONFIG_TABLE_NAME is not configured.');
@@ -50,6 +71,7 @@ export async function readConfig(): Promise<AdminConfig> {
   return adminConfigSchema.parse({
     ...response.Item,
     participantAccessEnabled: response.Item.participantAccessEnabled ?? true,
+    ...migrateModelSelection(response.Item.defaultModelKey, response.Item.enabledModelKeys),
     requiredGuardrailKeys: requiredGuardrails.success ? requiredGuardrails.data : migratedLegacyGuardrails,
     enabledToolKeys: enabledTools.success ? enabledTools.data : DEFAULT_ENABLED_TOOL_KEYS,
     usdToJpyRate: response.Item.usdToJpyRate ?? DEFAULT_USD_TO_JPY_RATE,

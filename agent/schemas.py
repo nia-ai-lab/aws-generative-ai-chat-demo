@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class GenerationConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    temperature: float = Field(ge=0, le=1)
+    temperature: float | None = Field(default=None, ge=0, le=1)
     topP: float | None = Field(default=None, ge=0, le=1)
     maxOutputTokens: int = Field(ge=1, le=4_096)
 

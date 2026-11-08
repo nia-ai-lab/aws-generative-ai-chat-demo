@@ -209,9 +209,10 @@ describe('application infrastructure', () => {
     });
   });
 
-  it('provisions the cross-region managed Web Search gateway and grants Runtime invocation', () => {
+  it('provisions the managed Web Search gateway in Tokyo and grants Runtime invocation', () => {
     expect(Object.values(template.findResources('AWS::CloudFormation::CustomResource')).some((resource: any) =>
-      resource.Properties?.GatewayName === 'generative-ai-chat-web-search',
+      resource.Properties?.GatewayName === 'generative-ai-chat-web-search'
+      && resource.Properties?.Region === 'ap-northeast-1',
     )).toBe(true);
     const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
     expect(policies).toContain('bedrock-agentcore:InvokeWebSearch');
@@ -224,6 +225,12 @@ describe('application infrastructure', () => {
     expect(policies).toContain('bedrock-agentcore:DeleteWorkloadIdentity');
     expect(policies).toContain('workload-identity-directory/default');
     expect(policies).toContain('workload-identity-directory/default/workload-identity/*');
+    expect(policies).toContain(':ap-northeast-1:aws:tool/web-search.v1');
+    expect(policies).not.toContain(':us-east-1:aws:tool/web-search.v1');
+    // The provider keeps us-east-1 permissions only to delete the legacy gateway.
     expect(policies).toContain('us-east-1');
+    template.hasResourceProperties('AWS::BedrockAgentCore::Runtime', {
+      EnvironmentVariables: Match.objectLike({ WEB_SEARCH_GATEWAY_REGION: 'ap-northeast-1' }),
+    });
   });
 });

@@ -359,6 +359,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
       <UserSettingsDialog
         open={userSettingsOpen}
         value={userPrompt}
+        modelKey={selectedModelKey}
         generationConfig={generationConfig}
         guardrailKeys={guardrailKeys}
         requiredGuardrailKeys={config.requiredGuardrailKeys}

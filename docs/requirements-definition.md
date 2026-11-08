@@ -160,7 +160,7 @@
 | TOOL-01 | 受講者設定に「Web検索」「RAG（社内規定検索）」「RAG（製品情報検索）」をチェックボックスで表示し、初期値はすべてオフとすること。 |
 | TOOL-02 | 受講者のツール選択は `sessionStorage` に保存し、同じ共有Cognitoユーザーの別ブラウザセッションへ引き継がれないこと。 |
 | TOOL-03 | 管理者は各ツールの利用可否をDynamoDBへ保存でき、無効化したツールはAPIへ直接指定されても実行されないこと。 |
-| TOOL-04 | Web検索には米国東部（バージニア北部）のAgentCore Gateway Web Search connectorを使い、Runtime実行ロールのSigV4認証で呼び出すこと。外部APIキーを使用しないこと。 |
+| TOOL-04 | Web検索には東京リージョンのAgentCore Gateway Web Search connectorを使い、Runtime実行ロールのSigV4認証で呼び出すこと。外部APIキーを使用しないこと。 |
 | TOOL-05 | Web検索はモデルが必要性を判断し、1回答につき最大2回、1回につき最大5件とすること。 |
 | TOOL-06 | Web検索結果を回答に利用した場合、connectorが返すタイトル、URL、抜粋をAI本文と分離した参照元領域に保持・表示すること。 |
 | TOOL-07 | 社内規定RAGはチェック時に各メッセージで1回実行し、上位4チャンクを一時的な参考情報としてモデルへ渡すこと。 |
@@ -178,7 +178,7 @@
 | ID | 要件 |
 |---|---|
 | MODEL-01 | チャット画面で、管理者が有効化したモデルから一つを選択できること。 |
-| MODEL-02 | 初期候補は Claude Sonnet 5、Nova 2 Lite、Nova Micro、Nova Pro とすること。 |
+| MODEL-02 | 初期候補は Claude Sonnet 5.5、Nova 2 Lite、Nova Micro、Nova Pro とすること。 |
 | MODEL-03 | 管理者は有効モデルの組み合わせと既定モデルを変更できること。 |
 | MODEL-04 | 管理者が無効化したモデルは新規送信に利用できないこと。 |
 | MODEL-05 | API および Agent は、クライアントが送信したモデル ID が管理者設定の許可リストに含まれることを検証すること。 |
@@ -317,13 +317,13 @@
 ## 9. 前提・暫定決定
 
 - 受講者用共有ユーザーは 1 個、管理者ユーザーは最低 1 個とする。
-- 既定選択モデルは暫定で Claude Sonnet 5 とする。
+- 既定選択モデルは暫定で Claude Sonnet 5.5 とする。
 - 4 モデルはすべて初期状態で有効とする。
 - UI は日本語を基本とし、製品名、モデル名、`AI Thinking...` は英語表記を許容する。
 - カスタムドメインは初期スコープ外とし、Amplify の標準ドメインを利用する。
 - 最大同時利用者数は 30 名とする。
 - CloudWatch Logs の保持期間は 7 日とする。
-- Claude Sonnet 5、Nova 2 Lite、Nova Micro、Nova Pro はクロスリージョン推論プロファイルを使用する。
+- Claude Sonnet 5.5、Nova 2 Lite、Nova Micro、Nova Pro はクロスリージョン推論プロファイルを使用する。
 - リソース削除を前提とするため、DynamoDB とログの削除保護は有効化しない。
 
 ## 10. 実装開始前の確認事項
@@ -332,8 +332,8 @@
 |---|---|---|
 | Q-01 | 最大同時受講者数 | **確定: 30 名** |
 | Q-02 | CloudWatch Logs の保持期間 | **確定: 7 日** |
-| Q-03 | Claude Sonnet 5、Nova 2 Lite、Nova Micro、Nova Pro のクロスリージョン推論を使用するか | **確定: 使用する** |
-| Q-04 | 既定選択モデル | Claude Sonnet 5 |
+| Q-03 | Claude Sonnet 5.5、Nova 2 Lite、Nova Micro、Nova Pro のクロスリージョン推論を使用するか | **確定: 使用する** |
+| Q-04 | 既定選択モデル | Claude Sonnet 5.5 |
 | Q-05 | カスタムドメインの要否 | 不要 |
 | Q-06 | Bedrock Guardrail の教材プリセット | **確定: デフォルトなし。コンテンツ保護、プロンプト攻撃、PII匿名化、旅行トピック、英単語pineapple禁止を事前定義** |
 

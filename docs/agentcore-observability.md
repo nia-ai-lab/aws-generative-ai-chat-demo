@@ -8,7 +8,7 @@
 - AgentCore Memory（短期会話メモリ）
 - LangGraph、Amazon Bedrock モデル呼び出し、ツール呼び出し、AWS SDK 呼び出しの自動トレース
 
-Web Search Gateway はバージニア北部（`us-east-1`）にあるため、今回のログ／トレース対象には含めない。既存のWeb検索機能は変更しない。
+Web Search Gateway は東京リージョンへ移行済みだが、今回のログ／トレース対象には含めない。
 
 ## 構成
 

@@ -17,6 +17,7 @@ interface ProviderEvent {
   ResourceProperties: {
     GatewayName: string;
     GatewayRoleArn: string;
+    Region?: string;
     ServiceToken: string;
   };
   CallbackContext?: { operation?: string };
@@ -29,11 +30,25 @@ interface ProviderResponse {
   IsComplete?: boolean;
 }
 
-const region = process.env.TARGET_REGION ?? 'us-east-1';
+// Gateways created before the Region property existed were always in us-east-1.
+const LEGACY_GATEWAY_REGION = 'us-east-1';
 const targetName = 'web-search-tool';
-const client = new BedrockAgentCoreControlClient({ region, maxAttempts: 4 });
+const clients = new Map<string, BedrockAgentCoreControlClient>();
 
-async function findGateway(name: string) {
+export function gatewayRegion(event: Pick<ProviderEvent, 'ResourceProperties'>): string {
+  return event.ResourceProperties.Region ?? LEGACY_GATEWAY_REGION;
+}
+
+function clientFor(region: string): BedrockAgentCoreControlClient {
+  let client = clients.get(region);
+  if (!client) {
+    client = new BedrockAgentCoreControlClient({ region, maxAttempts: 4 });
+    clients.set(region, client);
+  }
+  return client;
+}
+
+async function findGateway(client: BedrockAgentCoreControlClient, name: string) {
   for await (const page of paginateListGateways({ client }, { maxResults: 100 })) {
     const gateway = page.items?.find((item) => item.name === name);
     if (gateway) return gateway;
@@ -41,7 +56,7 @@ async function findGateway(name: string) {
   return undefined;
 }
 
-async function listTargets(gatewayId: string) {
+async function listTargets(client: BedrockAgentCoreControlClient, gatewayId: string) {
   const targets = [];
   for await (const page of paginateListGatewayTargets(
     { client },
@@ -53,12 +68,13 @@ async function listTargets(gatewayId: string) {
 }
 
 export async function onEvent(event: ProviderEvent): Promise<ProviderResponse> {
+  const client = clientFor(gatewayRegion(event));
   const gatewayName = event.ResourceProperties.GatewayName;
   if (event.RequestType === 'Delete') {
     const gatewayId = event.PhysicalResourceId;
     if (!gatewayId) return { IsComplete: true };
     try {
-      const targets = await listTargets(gatewayId);
+      const targets = await listTargets(client, gatewayId);
       await Promise.all(targets.flatMap((target) => target.targetId ? [client.send(new DeleteGatewayTargetCommand({
         gatewayIdentifier: gatewayId,
         targetId: target.targetId,
@@ -72,7 +88,7 @@ export async function onEvent(event: ProviderEvent): Promise<ProviderResponse> {
     };
   }
 
-  const gateway = await findGateway(gatewayName);
+  const gateway = await findGateway(client, gatewayName);
   let gatewayId = gateway?.gatewayId;
   if (!gatewayId) {
     const created = await client.send(new CreateGatewayCommand({
@@ -102,12 +118,13 @@ export async function onEvent(event: ProviderEvent): Promise<ProviderResponse> {
 }
 
 export async function isComplete(event: ProviderEvent): Promise<ProviderResponse> {
+  const client = clientFor(gatewayRegion(event));
   const gatewayId = event.PhysicalResourceId;
   if (!gatewayId) return { IsComplete: event.RequestType === 'Delete' };
 
   if (event.RequestType === 'Delete' || event.CallbackContext?.operation === 'delete') {
     try {
-      const targets = await listTargets(gatewayId);
+      const targets = await listTargets(client, gatewayId);
       if (targets.length > 0) return { IsComplete: false };
       try {
         await client.send(new DeleteGatewayCommand({ gatewayIdentifier: gatewayId }));
@@ -128,7 +145,7 @@ export async function isComplete(event: ProviderEvent): Promise<ProviderResponse
   }
   if (gateway.status !== 'READY') return { IsComplete: false };
 
-  const targets = await listTargets(gatewayId);
+  const targets = await listTargets(client, gatewayId);
   const target = targets.find((item) => item.name === targetName);
   if (!target) {
     await client.send(new CreateGatewayTargetCommand({

@@ -39,7 +39,7 @@ flowchart LR
     GR["Bedrock Guardrails"]
     FM["Amazon Bedrock Models<br>Claude / Nova"]
     CW["CloudWatch Logs / Traces"]
-    GW["AgentCore Gateway<br>Web Search / us-east-1"]
+    GW["AgentCore Gateway<br>Web Search / ap-northeast-1"]
     KB["Bedrock Knowledge Bases<br>ap-northeast-1"]
     SV["S3 Vectors"]
     DS["S3 架空社内規定"]
@@ -185,9 +185,9 @@ TypeScript で実装する。読み取りと管理更新は関数またはハン
   "pk": "APP_CONFIG",
   "configVersion": 1,
   "participantAccessEnabled": true,
-  "defaultModelKey": "claude-sonnet-5",
+  "defaultModelKey": "claude-sonnet-5-5",
   "enabledModelKeys": [
-    "claude-sonnet-5",
+    "claude-sonnet-5-5",
     "nova-2-lite",
     "nova-micro",
     "nova-pro"
@@ -260,7 +260,7 @@ flowchart LR
 
 #### Web検索
 
-Web Search connectorは提供リージョンである`us-east-1`にAgentCore Gatewayとして作成する。東京のAgentCore Runtimeは実行ロールの一時認証情報を用い、MCP Streamable HTTP要求をサービス名`bedrock-agentcore`、リージョン`us-east-1`でSigV4署名する。APIキー、固定クレデンシャル、受講者JWTはGatewayへ渡さない。
+Web Search connectorはRuntimeと同じ東京リージョン`ap-northeast-1`にAgentCore Gatewayとして作成する（2026年8月に東京で提供開始。それ以前は`us-east-1`に作成していた）。検索要求は東京リージョン内で処理され、リージョン外へ送出されない。AgentCore Runtimeは実行ロールの一時認証情報を用い、MCP Streamable HTTP要求をサービス名`bedrock-agentcore`、リージョン`ap-northeast-1`でSigV4署名する。APIキー、固定クレデンシャル、受講者JWTはGatewayへ渡さない。
 
 受講者の初期選択はオフとする。オンの場合もモデルが最新情報を必要と判断したときだけ`web_search`を呼び出す。1回答の上限は2検索、1検索の結果上限は5件とする。connectorが返すタイトル、URL、抜粋、公開日を保持し、回答本文とは別の参照元欄に表示する。
 
@@ -297,7 +297,7 @@ AgentCore Runtime は `runtimeSessionId` ごとに専用 microVM を割り当て
 
 | 論理キー | 表示名 | 推論プロファイル ID | 備考 |
 |---|---|---|---|
-| `claude-sonnet-5` | Claude Sonnet 5 | `global.anthropic.claude-sonnet-5` | Global cross-region inference |
+| `claude-sonnet-5-5` | Claude Sonnet 5.5 | `global.anthropic.claude-sonnet-5-5` | Global cross-region inference |
 | `nova-2-lite` | Nova 2 Lite | `jp.amazon.nova-2-lite-v1:0` | Japan geographic cross-region inference profile |
 | `nova-micro` | Nova Micro | `apac.amazon.nova-micro-v1:0` | APAC cross-region inference |
 | `nova-pro` | Nova Pro | `apac.amazon.nova-pro-v1:0` | APAC cross-region inference |
@@ -332,8 +332,7 @@ Output料金(円) = Outputトークン数 × Output単価(USD / 1M tokens) × US
 
 | モデル | Input USD / 1M tokens | Output USD / 1M tokens | 適用期間 |
 |---|---:|---:|---|
-| Claude Sonnet 5 | 2.00 | 10.00 | 2026-08-31までのローンチ料金 |
-| Claude Sonnet 5 | 3.00 | 15.00 | 2026-09-01以降 |
+| Claude Sonnet 5.5 | 2.00 | 10.00 | 現行（Global cross-region、2026-11-08確認） |
 | Nova 2 Lite | 0.396 | 3.311 | 現行 |
 | Nova Micro | 0.042 | 0.168 | 現行 |
 | Nova Pro | 0.96 | 3.84 | 現行 |
@@ -466,9 +465,9 @@ sequenceDiagram
 ```json
 {
   "configVersion": 4,
-  "defaultModelKey": "claude-sonnet-5",
+  "defaultModelKey": "claude-sonnet-5-5",
   "models": [
-    {"key": "claude-sonnet-5", "label": "Claude Sonnet 5"},
+    {"key": "claude-sonnet-5-5", "label": "Claude Sonnet 5.5"},
     {"key": "nova-2-lite", "label": "Nova 2 Lite"},
     {"key": "nova-micro", "label": "Nova Micro"},
     {"key": "nova-pro", "label": "Nova Pro"}
@@ -488,7 +487,7 @@ sequenceDiagram
   "requestId": "550e8400-e29b-41d4-a716-446655440000",
   "browserSessionId": "55f4ec01-f06b-4d97-8cf7-19999ddabda0",
   "conversationSessionId": "b52817f8-3778-45be-8ca6-5ad67956b9f7",
-  "modelKey": "claude-sonnet-5",
+  "modelKey": "claude-sonnet-5-5",
   "message": "生成AIとは何ですか？",
   "userSystemPrompt": "親しみやすい先生として説明してください。現在日時は $DATETIME です。",
   "guardrailKeys": ["denied-topic-travel", "blocked-word-pineapple"],
@@ -505,13 +504,13 @@ SSE イベント:
 
 ```text
 event: meta
-data: {"requestId":"...","modelKey":"claude-sonnet-5"}
+data: {"requestId":"...","modelKey":"claude-sonnet-5-5"}
 
 event: delta
 data: {"text":"生成AIは"}
 
 event: done
-data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"estimate":{"modelKey":"claude-sonnet-5","currency":"JPY","inputCostJpy":0.036,"outputCostJpy":0.1275,"totalCostJpy":0.1635,"inputUsdPerMillionTokens":2,"outputUsdPerMillionTokens":10,"usdToJpyRate":150,"priceVerifiedAt":"2026-08-17","scope":"MODEL_INFERENCE_ONLY"}}}
+data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"estimate":{"modelKey":"claude-sonnet-5-5","currency":"JPY","inputCostJpy":0.036,"outputCostJpy":0.1275,"totalCostJpy":0.1635,"inputUsdPerMillionTokens":2,"outputUsdPerMillionTokens":10,"usdToJpyRate":150,"priceVerifiedAt":"2026-08-17","scope":"MODEL_INFERENCE_ONLY"}}}
 ```
 
 エラーは `event: error` で安全なエラーコードだけを返す。HTTP レスポンス開始後はステータスコードを変更できないため、ストリーム内エラーイベントを使用する。
@@ -528,7 +527,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 {
   "expectedConfigVersion": 4,
   "defaultModelKey": "nova-2-lite",
-  "enabledModelKeys": ["claude-sonnet-5", "nova-2-lite"],
+  "enabledModelKeys": ["claude-sonnet-5-5", "nova-2-lite"],
   "defaultSystemPrompt": "",
   "requiredGuardrailKeys": ["content-safety", "prompt-attack"],
   "usdToJpyRate": 150
@@ -670,7 +669,7 @@ IME 変換中は `preventDefault()` も送信処理も実行しない。送信�
 - 対象 Guardrail とAPAC Guardrailプロファイルへの `bedrock:ApplyGuardrail`
 - 対象 AgentCore Memory の event/checkpoint 操作
 - 対象Knowledge Baseへの`bedrock:Retrieve`
-- 米国東部の対象AgentCore Gatewayへの`bedrock-agentcore:InvokeGateway`
+- 東京リージョンの対象AgentCore Gatewayへの`bedrock-agentcore:InvokeGateway`
 - アプリ設定DynamoDBの`GetItem`（受講者利用停止の二重防御）
 - AgentCore Observability と専用ロググループへの出力
 - 他の DynamoDB、S3、Lambda、Secrets Manager へのアクセスは付与しない
@@ -680,7 +679,7 @@ IME 変換中は `preventDefault()` も送信処理も実行しない。送信�
 - 対象Gatewayへの`bedrock-agentcore:InvokeGateway`
 - AWS管理Web Search toolへの`bedrock-agentcore:InvokeWebSearch`
 
-Web Search Gatewayを作成・削除するカスタムリソースLambdaには、GatewayとTargetのライフサイクル操作に加えて、Gatewayが依存リソースとして自動生成するWorkload Identityの作成・参照・削除権限を付与する。対象は`us-east-1`の既定Workload Identity Directoryとその配下に限定する。
+Web Search Gatewayを作成・削除するカスタムリソースLambdaには、GatewayとTargetのライフサイクル操作に加えて、Gatewayが依存リソースとして自動生成するWorkload Identityの作成・参照・削除権限を付与する。対象は`ap-northeast-1`の既定Workload Identity Directoryとその配下に限定する。旧リリースで`us-east-1`に作成したGatewayを移行時に削除するため、`us-east-1`の同等権限も維持する。カスタムリソースは`Region`プロパティを持ち、値の変更でGatewayを新リージョンに作り直し、CloudFormationのクリーンアップで旧リージョンのGatewayを削除する。`Region`を持たない旧リソースは`us-east-1`として扱う。
 - `aws:SourceAccount`と`aws:SourceArn`を信頼ポリシーで限定する
 
 ### 9.5 Deployment role
@@ -700,7 +699,7 @@ Web Search Gatewayを作成・削除するカスタムリソースLambdaには�
   "requestId": "uuid",
   "conversationSessionId": "uuid",
   "actorId": "sha256-value",
-  "modelKey": "claude-sonnet-5",
+  "modelKey": "claude-sonnet-5-5",
   "userMessage": "...",
   "assistantMessage": "...",
   "inputTokens": 120,
@@ -934,7 +933,7 @@ Amplify Gen 2 は TypeScript の CDK custom resources をバックエンドと�
 
 - 最大同時受講者は 30 名とする。
 - CloudWatch Logs の保持期間は 7 日とする。
-- Claude Sonnet 5、Nova 2 Lite、Nova Micro、Nova Pro はクロスリージョン推論プロファイルを使用する。
+- Claude Sonnet 5.5、Nova 2 Lite、Nova Micro、Nova Pro はクロスリージョン推論プロファイルを使用する。
 
 Guardrailの教材プリセット、拒否トピック、禁止ワード、フィルター強度は確定済みである。既定選択モデルとカスタムドメインは要件定義書の Q-04〜Q-05 に従う。
 

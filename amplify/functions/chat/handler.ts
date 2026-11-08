@@ -5,7 +5,7 @@ import {
   type ChatStreamEvent,
   type GuardrailTraceSummary,
 } from '../../../shared/api-schema.js';
-import { MODEL_CATALOG } from '../../../shared/model-catalog.js';
+import { MODEL_CATALOG, supportsSamplingParameters } from '../../../shared/model-catalog.js';
 import { estimateModelInvocationCost, type ModelCostEstimate } from '../../../shared/model-pricing.js';
 import { expandPromptVariables } from '../../../shared/prompt-variables.js';
 import { bearerToken, getAuthContext, isAdmin } from '../shared/auth.js';
@@ -88,7 +88,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
   let inputTokens: number | undefined;
   let outputTokens: number | undefined;
   let modelCostEstimate: ModelCostEstimate | undefined;
-  let temperature: number | undefined;
+  let temperature: number | null | undefined;
   let topP: number | null | undefined;
   let maxOutputTokens: number | undefined;
   let requiredGuardrailKeys: string[] = [];
@@ -117,7 +117,10 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
     requestId = input.requestId;
     conversationSessionId = input.conversationSessionId;
     selectedModel = input.modelKey;
-    ({ temperature, topP, maxOutputTokens } = input.generationConfig);
+    const agentGenerationConfig = supportsSamplingParameters(input.modelKey)
+      ? input.generationConfig
+      : { ...input.generationConfig, temperature: null, topP: null };
+    ({ temperature, topP, maxOutputTokens } = agentGenerationConfig);
     userMessage = input.message;
     requiredGuardrailKeys = config.requiredGuardrailKeys;
     participantGuardrailKeys = input.guardrailKeys;
@@ -156,7 +159,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
         message: input.message,
         adminSystemPrompt: expandPromptVariables(config.defaultSystemPrompt, promptContext),
         userSystemPrompt: expandPromptVariables(input.userSystemPrompt, promptContext),
-        generationConfig: input.generationConfig,
+        generationConfig: agentGenerationConfig,
         guardrailId: guardrail.guardrailId,
         guardrailVersion: guardrail.guardrailVersion,
         webSearchEnabled: effectiveToolKeys.includes('web-search'),

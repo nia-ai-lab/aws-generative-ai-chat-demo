@@ -42,10 +42,10 @@ npm run loadtest
 unset LOAD_TEST_USERNAME LOAD_TEST_RAMP_MS
 ```
 
-Claude Sonnet 5で確認する場合:
+Claude Sonnet 5.5で確認する場合:
 
 ```bash
-export LOAD_TEST_MODEL='claude-sonnet-5'
+export LOAD_TEST_MODEL='claude-sonnet-5-5'
 ```
 
 RAGまたはWeb検索を含める場合:

@@ -7,7 +7,7 @@
 - デプロイ先は `ap-northeast-1` であること
 - GitHub リポジトリを Amplify Hosting に接続できる権限があること
 - AgentCore、Bedrock Knowledge Bases、S3/S3 Vectors、Cognito、API Gateway、Lambda、DynamoDB、KMS、CloudWatch、IAM を作成できるデプロイロールがあること
-- 東京リージョンから米国東部（バージニア北部）のAgentCore Gatewayを作成・呼び出しできるOrganizations/SCP設定であること
+- 東京リージョンでAgentCore Gateway（Web Search connector）を作成・呼び出しできること。旧構成から移行する初回デプロイだけは、米国東部（バージニア北部）の旧Gatewayを削除できるOrganizations/SCP設定であること
 
 実AWSアカウントID、パスワード、トークンはリポジトリや `.env` に保存しない。
 
@@ -81,7 +81,7 @@ unset DEPLOY_ACCOUNT_ID AWS_REGION
 1. `/health` が `200` を返す。
 2. 受講者ユーザーと管理者ユーザーがログインできる。
 3. 一般受講者に管理ボタンが表示されず、管理APIの直接呼び出しも `403` になる。
-4. Claude Sonnet 5、Nova 2 Lite、Nova Micro、Nova Proで応答できる。
+4. Claude Sonnet 5.5、Nova 2 Lite、Nova Micro、Nova Proで応答できる。
 5. `AI Thinking...` の後に応答が逐次表示され、見出し、箇条書き、表、リンク、コードブロックなどのMarkdownが描画される。
 6. 同一会話では文脈を保持し、クリア後は以前の文脈を参照しない。
 7. 2つのブラウザセッションで同じ共有IDを使っても会話が混ざらない。
@@ -126,4 +126,4 @@ export CONFIRM_DESTROY='delete-generative-ai-chat'
 ./scripts/destroy.sh
 ```
 
-削除後はCloudFormation、AgentCore Runtime/Memory、米国東部のWeb Search Gateway、Bedrock Knowledge Base、S3/S3 Vectors、Cognito、API Gateway、Lambda、DynamoDB、CloudWatch Logs、KMSにアプリ固有リソースが残っていないことを確認する。共有のCDK bootstrapリソースは削除しない。
+削除後はCloudFormation、AgentCore Runtime/Memory、東京リージョンのWeb Search Gateway（旧構成の場合は米国東部も）、Bedrock Knowledge Base、S3/S3 Vectors、Cognito、API Gateway、Lambda、DynamoDB、CloudWatch Logs、KMSにアプリ固有リソースが残っていないことを確認する。共有のCDK bootstrapリソースは削除しない。

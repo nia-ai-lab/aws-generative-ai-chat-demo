@@ -18,8 +18,11 @@ describe('model catalog', () => {
     });
   });
 
-  it('defaults to Claude Sonnet 5.5 through its global inference profile', () => {
-    expect(DEFAULT_MODEL_KEY).toBe('claude-sonnet-5-5');
+  it('defaults to Claude Haiku 5.5', () => {
+    expect(DEFAULT_MODEL_KEY).toBe('claude-haiku-5-5');
+  });
+
+  it('offers Claude Sonnet 5.5 through its global inference profile', () => {
     expect(MODEL_CATALOG['claude-sonnet-5-5']).toMatchObject({
       label: 'Claude Sonnet 5.5',
       inferenceProfileId: 'global.anthropic.claude-sonnet-5-5',

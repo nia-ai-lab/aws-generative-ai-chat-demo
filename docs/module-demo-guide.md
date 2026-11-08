@@ -18,7 +18,7 @@
 | 項目 | 初期状態 |
 |---|---|
 | 利用モデル | Claude Sonnet 5.5、Claude Haiku 5.5、Nova Micro、Nova 2 Lite、Nova Proを有効化 |
-| 既定モデル | Claude Sonnet 5.5 |
+| 既定モデル | Claude Haiku 5.5 |
 | アプリ既定プロンプト | 空 |
 | 必須Guardrail | すべてオフ |
 
@@ -68,7 +68,7 @@
 
 1. 講師がアプリのURLとトレーニング用ログイン情報を案内する。
 2. 受講者は受講者アカウントでログインする。
-3. 画面上部で `Claude Sonnet 5.5` が選択されていることを確認する。
+3. 画面上部で `Claude Haiku 5.5` が選択されていることを確認する。
 4. 次のプロンプトを送信する。
 
 ```text

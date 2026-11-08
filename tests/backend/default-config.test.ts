@@ -7,6 +7,8 @@ describe('default application config', () => {
     expect(defaultConfig().participantAccessEnabled).toBe(true);
     expect(defaultConfig().requiredGuardrailKeys).toEqual([]);
     expect(defaultConfig().usdToJpyRate).toBe(150);
+    expect(defaultConfig().defaultModelKey).toBe('claude-haiku-5-5');
+    expect(defaultConfig().enabledModelKeys).toContain('claude-haiku-5-5');
     expect(defaultConfig().enabledToolKeys).toEqual(['web-search', 'rag', 'product-rag']);
   });
 });
@@ -26,7 +28,7 @@ describe('stored model selection migration', () => {
 
   it('falls back to the catalog when nothing valid is stored', () => {
     expect(migrateModelSelection('retired-model', ['retired-model'])).toEqual({
-      defaultModelKey: 'claude-sonnet-5-5',
+      defaultModelKey: 'claude-haiku-5-5',
       enabledModelKeys: ['claude-sonnet-5-5', 'claude-haiku-5-5', 'nova-micro', 'nova-2-lite', 'nova-pro'],
     });
   });

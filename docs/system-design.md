@@ -185,7 +185,7 @@ TypeScript で実装する。読み取りと管理更新は関数またはハン
   "pk": "APP_CONFIG",
   "configVersion": 1,
   "participantAccessEnabled": true,
-  "defaultModelKey": "claude-sonnet-5-5",
+  "defaultModelKey": "claude-haiku-5-5",
   "enabledModelKeys": [
     "claude-sonnet-5-5",
     "nova-2-lite",
@@ -469,7 +469,7 @@ sequenceDiagram
 ```json
 {
   "configVersion": 4,
-  "defaultModelKey": "claude-sonnet-5-5",
+  "defaultModelKey": "claude-haiku-5-5",
   "models": [
     {"key": "claude-sonnet-5-5", "label": "Claude Sonnet 5.5"},
     {"key": "claude-haiku-5-5", "label": "Claude Haiku 5.5"},

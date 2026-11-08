@@ -35,7 +35,7 @@ export const MODEL_CATALOG = {
 export type ModelKey = keyof typeof MODEL_CATALOG;
 
 export const MODEL_KEYS = Object.keys(MODEL_CATALOG) as ModelKey[];
-export const DEFAULT_MODEL_KEY: ModelKey = 'claude-sonnet-5-5';
+export const DEFAULT_MODEL_KEY: ModelKey = 'claude-haiku-5-5';
 
 // Model keys persisted by earlier releases, mapped to their current replacement.
 export const LEGACY_MODEL_KEY_ALIASES: Readonly<Record<string, ModelKey>> = {

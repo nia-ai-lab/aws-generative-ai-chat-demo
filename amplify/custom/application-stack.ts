@@ -60,7 +60,7 @@ interface DeployedGuardrails {
   profileArns: string[];
 }
 
-const GUARDRAIL_DEFINITION_VERSION = 2;
+const GUARDRAIL_DEFINITION_VERSION = 3;
 const GUARDRAIL_NAME_CODES: Record<GuardrailPolicyKey, string> = {
   'content-safety': 'content',
   'prompt-attack': 'attack',
@@ -68,6 +68,9 @@ const GUARDRAIL_NAME_CODES: Record<GuardrailPolicyKey, string> = {
   'denied-topic-travel': 'travel',
   'blocked-word-pineapple': 'pineapple',
 };
+
+// Verified on 2026-11-08 to detect Japanese names, addresses and ages as well as email and phone numbers.
+export const SENSITIVE_INFORMATION_PII_TYPES = ['NAME', 'ADDRESS', 'AGE', 'EMAIL', 'PHONE'] as const;
 
 function guardrailPolicyProperties(
   policies: GuardrailPolicyKey[],
@@ -103,7 +106,7 @@ function guardrailPolicyProperties(
       contentFiltersTierConfig: { tierName: 'STANDARD' },
     } : undefined,
     sensitiveInformationPolicyConfig: policies.includes('sensitive-information') ? {
-      piiEntitiesConfig: ['EMAIL', 'PHONE'].map((type) => ({
+      piiEntitiesConfig: SENSITIVE_INFORMATION_PII_TYPES.map((type) => ({
         type,
         action: 'ANONYMIZE',
         inputAction: 'ANONYMIZE',

@@ -44,7 +44,7 @@ export const GUARDRAIL_CATALOG: Record<GuardrailKey, {
   },
   'sensitive-information': {
     label: '個人情報の匿名化',
-    description: 'メールアドレスと電話番号を匿名化します。架空の情報で試してください。',
+    description: '氏名、住所、年齢、メールアドレス、電話番号を匿名化します。架空の情報で試してください。',
   },
   'denied-topic-travel': {
     label: '禁止トピック: 旅行',

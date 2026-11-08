@@ -348,7 +348,7 @@ Output料金(円) = Outputトークン数 × Output単価(USD / 1M tokens) × US
 | `none` | なし | Guardrailを送信しない |
 | `content-safety` | コンテンツ保護 | Hate、Insults、Sexual、Violence、MisconductをMediumで評価 |
 | `prompt-attack` | プロンプト攻撃対策 | Prompt AttackをHighで入力評価 |
-| `sensitive-information` | 個人情報の匿名化 | EMAIL、PHONEを入力・出力でANONYMIZE |
+| `sensitive-information` | 個人情報の匿名化 | NAME、ADDRESS、AGE、EMAIL、PHONEを入力・出力でANONYMIZE（日本語の氏名・住所も検出。全角数字の電話番号は検出されない） |
 | `denied-topic-travel` | 禁止トピック: 旅行 | 旅行、観光、宿泊、旅程を拒否 |
 | `blocked-word-pineapple` | 禁止ワード: pineapple | Word filters対応言語の英単語を使う完全一致フィルター |
 
@@ -356,7 +356,7 @@ Converse/ConverseStreamの `guardrailConfig` は一つのGuardrail IDしか指�
 
 日本語評価のためコンテンツフィルター、Prompt Attack、Denied TopicsはStandard tierを使用し、`apac.guardrail.v1:0`でクロスリージョン評価する。Word filtersは日本語に対応しないため、教材語句には対応言語である英語の `pineapple` を使用する。モデル呼び出しには `trace=disabled` と同期ストリーム評価を指定する。`guardContent`による部分評価や単独の`ApplyGuardrail` APIではなく、会話全体を保護する `guardrailConfig` を使用する。
 
-PII匿名化後も、Chat Lambdaの監査ログには受講者の原入力が保存される。教材では架空のメールアドレスと電話番号だけを使用し、ログはKMS暗号化、最小権限、7日保持を維持する。
+PII匿名化後も、Chat Lambdaの監査ログには受講者の原入力が保存される。教材では架空の氏名、住所、メールアドレス、電話番号だけを使用し、ログはKMS暗号化、最小権限、7日保持を維持する。
 
 ## 4. セッション設計
 

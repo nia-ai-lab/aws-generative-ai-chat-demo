@@ -159,7 +159,7 @@ describe('application infrastructure', () => {
     template.resourceCountIs('AWS::Bedrock::Guardrail', 31);
     template.resourceCountIs('AWS::Bedrock::GuardrailVersion', 31);
     template.hasResourceProperties('AWS::Bedrock::GuardrailVersion', {
-      Description: 'Immutable training definition v2',
+      Description: 'Immutable training definition v3',
     });
     template.hasResourceProperties('AWS::Bedrock::Guardrail', {
       TopicPolicyConfig: {
@@ -239,5 +239,20 @@ describe('application infrastructure', () => {
     template.hasResourceProperties('AWS::BedrockAgentCore::Runtime', {
       EnvironmentVariables: Match.objectLike({ WEB_SEARCH_GATEWAY_REGION: 'ap-northeast-1' }),
     });
+  });
+
+  it('anonymizes Japanese-capable PII types in every sensitive-information guardrail', () => {
+    const piiGuardrails = Object.values(template.findResources('AWS::Bedrock::Guardrail'))
+      .filter((resource: any) => resource.Properties?.SensitiveInformationPolicyConfig);
+    expect(piiGuardrails).toHaveLength(16);
+    for (const guardrail of piiGuardrails as any[]) {
+      const entities = guardrail.Properties.SensitiveInformationPolicyConfig.PiiEntitiesConfig;
+      expect(entities.map((entity: any) => entity.Type)).toEqual(['NAME', 'ADDRESS', 'AGE', 'EMAIL', 'PHONE']);
+      for (const entity of entities) {
+        expect(entity).toMatchObject({ InputAction: 'ANONYMIZE', OutputAction: 'ANONYMIZE' });
+      }
+    }
+    expect(Object.keys(template.findResources('AWS::Bedrock::GuardrailVersion'))
+      .every((logicalId) => logicalId.includes('VersionV3'))).toBe(true);
   });
 });

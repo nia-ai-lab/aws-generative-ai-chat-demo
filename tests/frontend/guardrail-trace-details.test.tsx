@@ -51,4 +51,21 @@ describe('GuardrailTraceDetails', () => {
     expect(html).toContain('Guardrailが匿名化しました');
     expect(html).toContain('メールアドレス（EMAIL）');
   });
+
+  it('labels Japanese-capable PII entity types', () => {
+    const html = renderToStaticMarkup(<GuardrailTraceDetails trace={{
+      result: 'ANONYMIZED',
+      guardrails: [],
+      assessments: ['NAME', 'ADDRESS', 'AGE'].map((name) => ({
+        source: 'input' as const,
+        policy: 'sensitive-information' as const,
+        name,
+        action: 'ANONYMIZED',
+      })),
+    }} />);
+
+    expect(html).toContain('氏名（NAME）');
+    expect(html).toContain('住所（ADDRESS）');
+    expect(html).toContain('年齢（AGE）');
+  });
 });

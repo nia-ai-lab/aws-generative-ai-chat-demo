@@ -58,5 +58,10 @@
   "engines": {
     "node": "22.18.x",
     "npm": "10.8.2"
+  },
+  "overrides": {
+    "@aws-cdk/toolkit-lib": {
+      "semver": "7.8.5"
+    }
   }
 }

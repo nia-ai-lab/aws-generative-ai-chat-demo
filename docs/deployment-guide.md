@@ -25,6 +25,7 @@
 `AWS_REGION` はAmplifyのビルド環境から自動供給される。Amplifyアプリ自体を必ず東京リージョンに作成する。
 
 `amplify.yml` がAgentのARM64 ZIP作成、検査、Amplify Gen 2バックエンド、SPAの順にデプロイする。生成される `amplify_outputs.json` はコミットしない。
+`package.json`の`overrides`は、`@aws-amplify/data-construct`等に同梱された`@aws-cdk/toolkit-lib`が`semver`を同梱しないため`npm ci`が毎回レジストリの最新`semver`を解決し、lockfileと不一致になる問題（2026-11に`semver@7.8.6`公開で発生）を防ぐためにlockfileと同じ`semver`へ固定している。依存を更新してlockfileの`semver`が変わった場合は、この固定値も合わせて更新する。
 ビルドでは`.nvmrc`と`amplify.yml`によりNode.js 22.18.0、npm 10.8.2を固定し、同じツールチェーンで生成・検証したlockfileを`npm ci`で使用する。`.npmrc`の`engine-strict`と`npm run verify:toolchain`により、異なるNode.js/npmでの依存更新を早期に拒否する。
 
 ## 3. ローカル検証

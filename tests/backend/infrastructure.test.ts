@@ -210,6 +210,13 @@ describe('application infrastructure', () => {
   });
 
   it('provisions the managed Web Search gateway in Tokyo and grants Runtime invocation', () => {
+    const deleteIdentityStatements = Object.values(template.findResources('AWS::IAM::Policy'))
+      .flatMap((policy: any) => policy.Properties.PolicyDocument.Statement)
+      .filter((statement: any) => [statement.Action].flat().includes('bedrock-agentcore:DeleteWorkloadIdentity'));
+    expect(deleteIdentityStatements.length).toBeGreaterThan(0);
+    for (const statement of deleteIdentityStatements) {
+      expect(JSON.stringify(statement.Resource)).toMatch(/workload-identity-directory\/default"/);
+    }
     expect(Object.values(template.findResources('AWS::CloudFormation::CustomResource')).some((resource: any) =>
       resource.Properties?.GatewayName === 'generative-ai-chat-web-search'
       && resource.Properties?.Region === 'ap-northeast-1',

@@ -650,6 +650,8 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
         'bedrock-agentcore:DeleteWorkloadIdentity',
       ],
       resources: [
+        // DeleteGateway removes its workload identity, which is authorized against the directory as well.
+        ...WEB_SEARCH_MANAGED_REGIONS.map((region) => `arn:${stack.partition}:bedrock-agentcore:${region}:${stack.account}:workload-identity-directory/default`),
         ...WEB_SEARCH_MANAGED_REGIONS.map((region) => `arn:${stack.partition}:bedrock-agentcore:${region}:${stack.account}:workload-identity-directory/default/workload-identity/*`),
       ],
     }));

@@ -36,6 +36,11 @@ function dateTimeInTimeZone(now: Date, timeZone: string): string {
   return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}:${values.second}${sign}${offsetHours}:${offsetRemainder}`;
 }
 
+/** Calendar date (YYYY-MM-DD) in the given IANA time zone. */
+export function dateInTimeZone(now: Date, timeZone: string): string {
+  return dateTimeInTimeZone(now, timeZone).slice(0, 10);
+}
+
 export function expandPromptVariables(template: string, context: PromptVariableContext): string {
   if (!template) return '';
   const replacements: Record<PromptVariable, string> = {

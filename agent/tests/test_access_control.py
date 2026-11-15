@@ -46,3 +46,11 @@ def test_missing_setting_keeps_existing_deployments_enabled(monkeypatch: pytest.
     context = FakeContext({"Authorization": authorization_header(["Students"])})
 
     access_control.require_participant_access(context)
+
+
+def test_verified_subject_is_read_from_the_runtime_verified_token() -> None:
+    token = jwt.encode({"sub": "subject-a"}, "test-secret-with-at-least-32-bytes!", algorithm="HS256")
+
+    assert access_control.verified_subject(FakeContext({"Authorization": f"Bearer {token}"})) == "subject-a"
+    with pytest.raises(PermissionError):
+        access_control.verified_subject(FakeContext({}))

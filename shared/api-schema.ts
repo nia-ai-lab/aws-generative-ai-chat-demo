@@ -98,6 +98,17 @@ export interface TrustedSource {
   excerpt?: string;
 }
 
+export const toolCallSummarySchema = z.object({
+  name: z.string().min(1).max(64),
+  label: z.string().min(1).max(64),
+  access: z.enum(['read', 'write']),
+  status: z.enum(['success', 'denied', 'approval_required', 'error']),
+  summary: z.string().max(200),
+}).strict();
+export const toolCallSummariesSchema = z.array(toolCallSummarySchema).max(32);
+
+export type ToolCallSummary = z.infer<typeof toolCallSummarySchema>;
+
 export interface ToolUsage {
   webSearchQueries: number;
   ragRetrievals: number;
@@ -149,6 +160,7 @@ export type ChatStreamEvent =
     usage?: ModelUsage;
     sources?: TrustedSource[];
     toolUsage?: ToolUsage;
+    toolCalls?: ToolCallSummary[];
     guardrailTrace?: GuardrailTraceSummary;
   }
   | { type: 'error'; code: string; message: string };

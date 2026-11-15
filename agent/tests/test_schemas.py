@@ -81,3 +81,21 @@ def test_guardrail_id_and_version_must_be_supplied_together() -> None:
         }
     )
     assert invocation.guardrailVersion == "1"
+
+
+def test_hr_tools_are_off_by_default_and_require_the_server_date() -> None:
+    invocation = ChatInvocation.model_validate(valid_invocation())
+    assert invocation.hrToolsEnabled is False
+    assert invocation.timeZone == "Asia/Tokyo"
+
+    with pytest.raises(ValidationError):
+        ChatInvocation.model_validate({**valid_invocation(), "hrToolsEnabled": True})
+    with pytest.raises(ValidationError):
+        ChatInvocation.model_validate(
+            {**valid_invocation(), "hrToolsEnabled": True, "currentDate": "2026-13-01"},
+        )
+
+    enabled = ChatInvocation.model_validate({
+        **valid_invocation(), "hrToolsEnabled": True, "currentDate": "2026-11-16", "timeZone": "Asia/Tokyo",
+    })
+    assert enabled.currentDate == "2026-11-16"

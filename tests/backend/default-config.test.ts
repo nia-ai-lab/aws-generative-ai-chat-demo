@@ -9,7 +9,7 @@ describe('default application config', () => {
     expect(defaultConfig().usdToJpyRate).toBe(150);
     expect(defaultConfig().defaultModelKey).toBe('claude-haiku-5-5');
     expect(defaultConfig().enabledModelKeys).toContain('claude-haiku-5-5');
-    expect(defaultConfig().enabledToolKeys).toEqual(['web-search', 'rag', 'product-rag']);
+    expect(defaultConfig().enabledToolKeys).toEqual(['web-search', 'rag', 'product-rag', 'hr-tools']);
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chatRequestSchema, updateAdminConfigSchema } from '../../shared/api-schema.js';
+import { chatRequestSchema, toolCallSummariesSchema, updateAdminConfigSchema } from '../../shared/api-schema.js';
 
 const validChat = {
   requestId: '550e8400-e29b-41d4-a716-446655440000',
@@ -121,5 +121,15 @@ describe('admin config validation', () => {
       usdToJpyRate: 150,
     });
     expect(result.participantAccessEnabled).toBe(false);
+  });
+});
+
+describe('toolCallSummariesSchema', () => {
+  it('accepts HR tool summaries from the agent and rejects unknown fields', () => {
+    const call = { name: 'get_payslip', label: '給与明細を照会', access: 'read', status: 'denied', summary: '本人以外' };
+
+    expect(toolCallSummariesSchema.parse([call])).toEqual([call]);
+    expect(() => toolCallSummariesSchema.parse([{ ...call, args: { employee: 'B' } }])).toThrow();
+    expect(() => toolCallSummariesSchema.parse([{ ...call, status: 'unknown' }])).toThrow();
   });
 });

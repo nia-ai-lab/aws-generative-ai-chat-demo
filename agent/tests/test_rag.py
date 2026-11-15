@@ -3,7 +3,7 @@ from rag import PRODUCT_TITLES, _title_from_uri
 
 def test_policy_title_is_derived_from_source_uri_for_mid_document_chunk() -> None:
     title = _title_from_uri(
-        "s3://training/policies/07-business-travel.md",
+        "s3://training/policies/11-business-travel.md",
         0,
         "宿泊費上限は東京23区・大阪市が1泊15,000円です。",
     )

@@ -16,18 +16,21 @@ KNOWLEDGE_BASE_ID = os.getenv("KNOWLEDGE_BASE_ID", "")
 PRODUCT_KNOWLEDGE_BASE_ID = os.getenv("PRODUCT_KNOWLEDGE_BASE_ID", "")
 
 POLICY_TITLES = {
-    "01-work-hours": "就業・勤務時間規程",
-    "02-leave": "休暇規程",
-    "03-remote-work": "リモートワーク規程",
-    "04-information-security": "情報セキュリティ基本規程",
-    "05-generative-ai": "生成AI利用規程",
-    "06-expenses": "経費精算規程",
-    "07-business-travel": "国内・海外出張規程",
-    "08-data-classification": "データ分類・個人情報取扱規程",
-    "09-business-continuity": "災害対応・事業継続規程",
-    "10-harassment": "ハラスメント防止・相談規程",
-    "11-side-jobs": "副業・利益相反規程",
-    "12-device-management": "端末・記録媒体管理規程",
+    "01-work-rules": "就業規則",
+    "02-childcare-leave": "育児休業規程",
+    "03-benefits": "福利厚生規程",
+    "04-evaluation-guide": "評価の手引き",
+    "05-onboarding": "入社手続きガイド",
+    "06-payroll": "給与規程",
+    "07-harassment": "ハラスメント防止・相談規程",
+    "08-information-security": "情報セキュリティ基本規程",
+    "09-generative-ai": "生成AI利用規程",
+    "10-expenses": "経費精算規程",
+    "11-business-travel": "国内・海外出張規程",
+    "12-data-classification": "データ分類・個人情報取扱規程",
+    "13-business-continuity": "災害対応・事業継続規程",
+    "14-side-jobs": "副業・利益相反規程",
+    "15-device-management": "端末・記録媒体管理規程",
 }
 
 PRODUCT_TITLES = {

@@ -1,5 +1,7 @@
 """Validated AgentCore invocation payloads."""
 
+from datetime import date
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
@@ -29,9 +31,16 @@ class ChatInvocation(BaseModel):
     webSearchEnabled: bool = False
     ragEnabled: bool = False
     productRagEnabled: bool = False
+    hrToolsEnabled: bool = False
+    currentDate: str = Field(default="", pattern=r"^(\d{4}-\d{2}-\d{2})?$")
+    timeZone: str = Field(default="Asia/Tokyo", min_length=1, max_length=64)
 
     @model_validator(mode="after")
     def validate_guardrail_pair(self) -> "ChatInvocation":
         if bool(self.guardrailId) != bool(self.guardrailVersion):
             raise ValueError("guardrailId and guardrailVersion must be supplied together")
+        if self.hrToolsEnabled and not self.currentDate:
+            raise ValueError("currentDate is required when HR tools are enabled")
+        if self.currentDate:
+            date.fromisoformat(self.currentDate)
         return self

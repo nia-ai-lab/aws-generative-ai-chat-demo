@@ -12,6 +12,7 @@
 - [モジュール別デモ実施ガイド](./docs/module-demo-guide.md)
 - [Web検索・RAGデモガイド](./docs/tool-rag-demo-guide.md)
 - [顧客サポートで学ぶ責任あるAIデモガイド](./docs/customer-support-responsible-ai-demo-guide.md)
+- [RAG文書（AnyCompany 人事規程）](./knowledge-base/README.md)
 
 ## Planned architecture
 
@@ -39,7 +40,8 @@
 - 応答ごとのInput / Outputトークン数とモデル推論料金（日本円・概算）の折りたたみ表示
 - ブラウザセッションごとに複数選択できる事前定義Bedrock Guardrailsと、管理者が解除不能にできる必須Guardrail
 - ブラウザセッションごとにオプトインできるAgentCore Web Search（引用元表示・最大2検索）
-- 架空企業の日本語社内規定と架空家電資料を別々に検索するBedrock Knowledge Bases + S3 VectorsのRAG
+- 架空企業AnyCompanyの人事規程と架空家電資料を別々に検索するBedrock Knowledge Bases + S3 VectorsのRAG
+- チェック1つで使える人事ツール（AnyCompany人事システムのモック。規程検索、休暇残日数、休暇申請の下書きと本人承認後の提出、本人確認つきの給与明細照会）
 - 管理者によるWeb検索・RAGの利用可否設定
 - KMS暗号化された7日保持の会話監査ログ
 - Amplify Gen 2とCDK TypeScriptによる一括デプロイ

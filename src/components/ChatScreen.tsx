@@ -4,6 +4,7 @@ import type {
   AdminConfig,
   GuardrailTraceSummary,
   PublicConfig,
+  ToolCallSummary,
   ToolUsage,
   TrustedSource,
   UpdateAdminConfig,
@@ -35,6 +36,7 @@ import { GuardrailTraceDetails } from './GuardrailTraceDetails';
 import { UserSettingsDialog } from './UserSettingsDialog';
 import { UsageCostDetails } from './UsageCostDetails';
 import { SourceDetails } from './SourceDetails';
+import { ToolCallDetails } from './ToolCallDetails';
 
 const MarkdownMessage = lazy(() => import('./MarkdownMessage'));
 
@@ -48,6 +50,7 @@ interface Message {
   usage?: ModelUsage;
   sources?: TrustedSource[];
   toolUsage?: ToolUsage;
+  toolCalls?: ToolCallSummary[];
   guardrailTrace?: GuardrailTraceSummary;
 }
 
@@ -146,6 +149,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
               usage: event.usage,
               sources: event.sources,
               toolUsage: event.toolUsage,
+              toolCalls: event.toolCalls,
               guardrailTrace: event.guardrailTrace,
             } : item,
           ));
@@ -318,6 +322,9 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
                     <MarkdownMessage content={message.text} />
                   </Suspense>
                 )}
+              {message.role === 'assistant' && message.toolCalls && (
+                <ToolCallDetails toolCalls={message.toolCalls} />
+              )}
               {message.role === 'assistant' && message.guardrailTrace && (
                 <GuardrailTraceDetails trace={message.guardrailTrace} />
               )}

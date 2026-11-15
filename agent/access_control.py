@@ -38,15 +38,29 @@ def _authorization_header(context: RequestContextLike) -> str:
     return headers.get("Authorization", headers.get("authorization", ""))
 
 
-def _is_admin(context: RequestContextLike) -> bool:
+def _token_claims(context: RequestContextLike) -> dict[str, Any]:
+    # AgentCore Runtime's Cognito JWT authorizer verifies the token before invocation.
     value = _authorization_header(context)
     token = value[7:] if value.lower().startswith("bearer ") else ""
     if not token:
-        return False
+        return {}
     claims: dict[str, Any] = jwt.decode(
         token,
         options={"verify_signature": False, "verify_aud": False, "verify_exp": False},
     )
+    return claims
+
+
+def verified_subject(context: RequestContextLike) -> str:
+    """Return the Cognito subject of the token that AgentCore Runtime already verified."""
+    subject = _token_claims(context).get("sub")
+    if not isinstance(subject, str) or not subject:
+        raise PermissionError("The access token has no subject.")
+    return subject
+
+
+def _is_admin(context: RequestContextLike) -> bool:
+    claims = _token_claims(context)
     groups = claims.get("cognito:groups", [])
     return isinstance(groups, list) and ADMIN_GROUP in groups
 

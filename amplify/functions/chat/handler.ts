@@ -2,12 +2,14 @@ import type { APIGatewayProxyEvent, Context } from 'aws-lambda';
 import {
   chatRequestSchema,
   guardrailTraceSummarySchema,
+  toolCallSummariesSchema,
   type ChatStreamEvent,
   type GuardrailTraceSummary,
+  type ToolCallSummary,
 } from '../../../shared/api-schema.js';
 import { MODEL_CATALOG, supportsSamplingParameters } from '../../../shared/model-catalog.js';
 import { estimateModelInvocationCost, type ModelCostEstimate } from '../../../shared/model-pricing.js';
-import { expandPromptVariables } from '../../../shared/prompt-variables.js';
+import { dateInTimeZone, expandPromptVariables } from '../../../shared/prompt-variables.js';
 import { bearerToken, getAuthContext, isAdmin } from '../shared/auth.js';
 import { readConfig } from '../shared/config.js';
 import { corsHeaders } from '../shared/http.js';
@@ -57,6 +59,9 @@ async function* parseAgentSse(body: ReadableStream<Uint8Array>): AsyncGenerator<
       if (parsed.type === 'done' && parsed.guardrailTrace !== undefined) {
         parsed.guardrailTrace = guardrailTraceSummarySchema.parse(parsed.guardrailTrace);
       }
+      if (parsed.type === 'done' && parsed.toolCalls !== undefined) {
+        parsed.toolCalls = toolCallSummariesSchema.parse(parsed.toolCalls);
+      }
       yield parsed as ChatStreamEvent;
     }
     if (done) break;
@@ -95,6 +100,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
   let participantGuardrailKeys: string[] = [];
   let effectiveGuardrailKey = 'none';
   let guardrailTrace: GuardrailTraceSummary | undefined;
+  let toolCalls: ToolCallSummary[] | undefined;
   let activeStream: LambdaResponseStream | undefined;
   let requestedToolKeys: string[] = [];
   let effectiveToolKeys: string[] = [];
@@ -165,6 +171,9 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
         webSearchEnabled: effectiveToolKeys.includes('web-search'),
         ragEnabled: effectiveToolKeys.includes('rag'),
         productRagEnabled: effectiveToolKeys.includes('product-rag'),
+        hrToolsEnabled: effectiveToolKeys.includes('hr-tools'),
+        currentDate: dateInTimeZone(promptContext.now, promptContext.timeZone),
+        timeZone: promptContext.timeZone,
       }),
       signal: AbortSignal.timeout(85_000),
     });
@@ -188,6 +197,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       if (agentEvent.type === 'delta') assistantMessage += agentEvent.text;
       if (agentEvent.type === 'done') {
         guardrailTrace = agentEvent.guardrailTrace;
+        toolCalls = agentEvent.toolCalls;
         inputTokens = agentEvent.usage?.inputTokens;
         outputTokens = agentEvent.usage?.outputTokens;
         modelCostEstimate = estimateModelInvocationCost(
@@ -238,6 +248,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       guardrailTrace,
       requestedToolKeys,
       effectiveToolKeys,
+      toolCalls,
       latencyMs: Date.now() - startedAt,
       result: 'SUCCESS',
     }));
@@ -276,6 +287,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       guardrailTrace,
       requestedToolKeys,
       effectiveToolKeys,
+      toolCalls,
       latencyMs: Date.now() - startedAt,
       result: code,
       errorType: error instanceof Error ? error.name : 'UnknownError',

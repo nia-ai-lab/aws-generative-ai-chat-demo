@@ -35,7 +35,7 @@ import {
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(currentDirectory, '../..');
-const RAG_DOCUMENT_VERSION = 1;
+const RAG_DOCUMENT_VERSION = 2;
 const PRODUCT_RAG_DOCUMENT_VERSION = 1;
 // AgentCore Web Search has been available in Tokyo since 2026-08, so the gateway lives next to the Runtime.
 const WEB_SEARCH_REGION = 'ap-northeast-1';

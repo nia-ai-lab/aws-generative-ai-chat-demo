@@ -9,8 +9,9 @@ from typing import Any
 from bedrock_agentcore import BedrockAgentCoreApp, RequestContext
 from pydantic import ValidationError
 
-from access_control import ParticipantAccessDisabledError, require_participant_access
+from access_control import ParticipantAccessDisabledError, require_participant_access, verified_subject
 from graph import stream_chat
+from hr_tools import Employee, employee_for_subject
 from schemas import ChatInvocation
 
 app = BedrockAgentCoreApp()
@@ -44,6 +45,15 @@ async def invoke(payload: dict[str, Any], context: RequestContext) -> AsyncItera
         yield {"type": "error", "code": "AGENT_UNAVAILABLE", "message": "Agent unavailable."}
         return
 
+    hr_employee: Employee | None = None
+    if invocation.hrToolsEnabled:
+        try:
+            hr_employee = employee_for_subject(verified_subject(context))
+        except Exception as error:
+            logger.warning("HR tools identity check failed errorType=%s", type(error).__name__)
+            yield {"type": "error", "code": "UNAUTHORIZED", "message": "Identity could not be verified."}
+            return
+
     logger.info(
         "Agent invocation started requestId=%s modelKey=%s conversationSessionId=%s runtimeSessionId=%s",
         invocation.requestId,
@@ -52,7 +62,7 @@ async def invoke(payload: dict[str, Any], context: RequestContext) -> AsyncItera
         invocation.runtimeSessionId,
     )
     try:
-        async for event in stream_chat(invocation):
+        async for event in stream_chat(invocation, hr_employee):
             yield event
     except Exception as error:
         logger.exception("Agent invocation failed errorType=%s", type(error).__name__)

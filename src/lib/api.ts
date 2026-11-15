@@ -8,21 +8,24 @@ import {
   type PublicConfig,
   type UpdateAdminConfig,
 } from '../../shared/api-schema';
-import { readSse } from './sse';
+import { expiresSoon, streamWithTokenRetry } from './token-refresh';
 
 const custom = outputs.custom as { apiUrl?: string } | undefined;
 const apiUrl = custom?.apiUrl;
 
-async function accessToken(): Promise<string> {
-  const session = await fetchAuthSession();
+async function accessToken(forceRefresh = false): Promise<string> {
+  let session = await fetchAuthSession({ forceRefresh });
+  if (!forceRefresh && expiresSoon(session.tokens?.accessToken?.payload.exp)) {
+    session = await fetchAuthSession({ forceRefresh: true });
+  }
   const token = session.tokens?.accessToken?.toString();
   if (!token) throw new Error('UNAUTHORIZED');
   return token;
 }
 
-async function authenticatedFetch(path: string, init?: RequestInit): Promise<Response> {
+async function authenticatedFetch(path: string, init?: RequestInit, forceRefresh = false): Promise<Response> {
   if (!apiUrl) throw new Error('API URL is not configured.');
-  const token = await accessToken();
+  const token = await accessToken(forceRefresh);
   const headers = new Headers(init?.headers);
   headers.set('Authorization', `Bearer ${token}`);
   if (init?.body) headers.set('Content-Type', 'application/json');
@@ -56,16 +59,9 @@ export async function updateAdminConfig(value: UpdateAdminConfig): Promise<Admin
 }
 
 export async function* streamChat(request: ChatRequest, signal: AbortSignal) {
-  const response = await authenticatedFetch('/chat', {
+  yield* streamWithTokenRetry((forceRefresh) => authenticatedFetch('/chat', {
     method: 'POST',
     body: JSON.stringify(request),
     signal,
-  });
-
-  if (!response.ok) {
-    const error = (await response.json().catch(() => ({}))) as { code?: string };
-    throw new Error(error.code ?? `HTTP_${response.status}`);
-  }
-
-  yield* readSse(response);
+  }, forceRefresh));
 }

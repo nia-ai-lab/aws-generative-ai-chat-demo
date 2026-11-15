@@ -68,6 +68,17 @@ async function* parseAgentSse(body: ReadableStream<Uint8Array>): AsyncGenerator<
   }
 }
 
+function openSseStream(event: APIGatewayProxyEvent, originalStream: LambdaResponseStream): LambdaResponseStream {
+  return awslambda.HttpResponseStream.from(originalStream, {
+    statusCode: 200,
+    headers: {
+      ...corsHeaders(event),
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'X-Accel-Buffering': 'no',
+    },
+  });
+}
+
 function finishError(
   event: APIGatewayProxyEvent,
   originalStream: LambdaResponseStream,
@@ -104,6 +115,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
   let activeStream: LambdaResponseStream | undefined;
   let requestedToolKeys: string[] = [];
   let effectiveToolKeys: string[] = [];
+  let runtimeStatus: number | undefined;
 
   try {
     const auth = getAuthContext(event);
@@ -178,18 +190,16 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       signal: AbortSignal.timeout(85_000),
     });
 
+    runtimeStatus = response.status;
+    if (response.status === 401 || response.status === 403) {
+      // The runtime's JWT authorizer rejected the forwarded token (e.g. close to its expiry).
+      throw new Error('UNAUTHORIZED');
+    }
     if (!response.ok || !response.body) {
       throw new Error(response.status === 429 ? 'RATE_LIMITED' : 'AGENT_UNAVAILABLE');
     }
 
-    const stream = awslambda.HttpResponseStream.from(originalStream, {
-      statusCode: 200,
-      headers: {
-        ...corsHeaders(event),
-        'Content-Type': 'text/event-stream; charset=utf-8',
-        'X-Accel-Buffering': 'no',
-      },
-    });
+    const stream = openSseStream(event, originalStream);
     activeStream = stream;
     writeSse(stream, { type: 'meta', requestId: input.requestId, modelKey: input.modelKey });
 
@@ -262,6 +272,11 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
     if (activeStream) {
       writeSse(activeStream, { type: 'error', code, message: 'The request could not be completed.' });
       activeStream.end();
+    } else if (code === 'UNAUTHORIZED' && runtimeStatus !== undefined) {
+      // Sent as a stream event, which reaches the browser intact, so it can retry with a fresh token.
+      const stream = openSseStream(event, originalStream);
+      writeSse(stream, { type: 'error', code, message: 'The access token was rejected.' });
+      stream.end();
     } else {
       finishError(event, originalStream, status, code);
     }
@@ -290,6 +305,7 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       toolCalls,
       latencyMs: Date.now() - startedAt,
       result: code,
+      runtimeStatus,
       errorType: error instanceof Error ? error.name : 'UnknownError',
     }));
   }

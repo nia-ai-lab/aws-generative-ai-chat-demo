@@ -41,6 +41,29 @@ describe('UserSettingsDialog', () => {
     expect(html).not.toContain('Temperature と Top P の指定に対応していない');
   });
 
+  it('shows locked presets as checked checkboxes that cannot be changed', () => {
+    const html = renderToStaticMarkup(
+      <UserSettingsDialog
+        open
+        value=""
+        modelKey="nova-2-lite"
+        generationConfig={{ temperature: 0.3, topP: null, maxOutputTokens: 4_096 }}
+        guardrailKeys={[]}
+        requiredGuardrailKeys={[]}
+        lockedGuardrailKeys={['content-safety']}
+        toolKeys={[]}
+        availableToolKeys={[]}
+        onClose={() => undefined}
+        onSave={() => undefined}
+      />,
+    );
+    const checkboxes = html.match(/<input type="checkbox"[^>]*>/g) ?? [];
+    expect(checkboxes).toHaveLength(5);
+    expect(checkboxes[0]).toContain('checked=""');
+    expect(checkboxes[0]).toContain('disabled=""');
+    expect(checkboxes.slice(1).every((checkbox) => !checkbox.includes('disabled'))).toBe(true);
+  });
+
   it('explains that Claude Sonnet 5.5 ignores sampling parameters', () => {
     const html = renderToStaticMarkup(
       <UserSettingsDialog

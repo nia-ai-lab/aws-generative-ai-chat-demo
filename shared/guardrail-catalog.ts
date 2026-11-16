@@ -26,6 +26,24 @@ export const guardrailPolicyKeysSchema = z.array(guardrailPolicyKeySchema)
   .refine((keys) => new Set(keys).size === keys.length, 'Guardrail policies must be unique.');
 export const DEFAULT_GUARDRAIL_KEYS: GuardrailPolicyKey[] = [];
 
+// Participants (non-admins) always chat with these presets; only admins can turn them off for demos.
+export const PARTICIPANT_LOCKED_GUARDRAIL_KEYS: readonly GuardrailPolicyKey[] = ['content-safety'];
+
+// Content filter categories of the content-safety preset (prompt attack is a separate preset).
+export const CONTENT_SAFETY_FILTER_TYPES = ['HATE', 'INSULTS', 'SEXUAL', 'VIOLENCE', 'MISCONDUCT'] as const;
+
+export function lockedGuardrailKeysFor(isAdmin: boolean): readonly GuardrailPolicyKey[] {
+  return isAdmin ? [] : PARTICIPANT_LOCKED_GUARDRAIL_KEYS;
+}
+
+export function withLockedGuardrailKeys(
+  isAdmin: boolean,
+  guardrailKeys: readonly GuardrailPolicyKey[],
+): GuardrailPolicyKey[] {
+  const selected = new Set([...guardrailKeys, ...lockedGuardrailKeysFor(isAdmin)]);
+  return GUARDRAIL_POLICY_KEYS.filter((key) => selected.has(key));
+}
+
 export const GUARDRAIL_CATALOG: Record<GuardrailKey, {
   label: string;
   description: string;

@@ -164,3 +164,32 @@ export type ChatStreamEvent =
     guardrailTrace?: GuardrailTraceSummary;
   }
   | { type: 'error'; code: string; message: string };
+
+export const CONTENT_SAFETY_ALERT_RULE = {
+  // A participant whose messages are blocked by content safety this many times within one
+  // window raises the CloudWatch alarm and is highlighted on the admin screen.
+  threshold: 5,
+  windowMinutes: 10,
+  lookbackMinutes: 60,
+} as const;
+
+export const contentSafetyAlarmStateSchema = z.enum(['OK', 'ALARM', 'INSUFFICIENT_DATA', 'UNKNOWN']);
+
+export const contentSafetyAlertsSchema = z.object({
+  alarmState: contentSafetyAlarmStateSchema,
+  alarmUpdatedAt: z.string().optional(),
+  threshold: z.number().int().positive(),
+  windowMinutes: z.number().int().positive(),
+  lookbackMinutes: z.number().int().positive(),
+  checkedAt: z.string(),
+  participants: z.array(z.object({
+    actorId: z.string().min(1).max(128),
+    windowStart: z.string(),
+    blockCount: z.number().int().nonnegative(),
+    lastBlockedAt: z.string(),
+    overThreshold: z.boolean(),
+  }).strict()).max(100),
+}).strict();
+
+export type ContentSafetyAlarmState = z.infer<typeof contentSafetyAlarmStateSchema>;
+export type ContentSafetyAlerts = z.infer<typeof contentSafetyAlertsSchema>;

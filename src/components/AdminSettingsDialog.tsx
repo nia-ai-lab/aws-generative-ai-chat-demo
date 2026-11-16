@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { AdminConfig, UpdateAdminConfig } from '../../shared/api-schema';
+import type { AdminConfig, ContentSafetyAlerts, UpdateAdminConfig } from '../../shared/api-schema';
+import { ContentSafetyAlertsPanel } from './ContentSafetyAlertsPanel';
 import {
   GUARDRAIL_CATALOG,
   GUARDRAIL_POLICY_KEYS,
@@ -14,6 +15,7 @@ import { TOOL_CATALOG, TOOL_KEYS, type ToolKey } from '../../shared/tool-catalog
 interface AdminSettingsDialogProps {
   open: boolean;
   config?: AdminConfig;
+  contentSafetyAlerts?: ContentSafetyAlerts;
   loading: boolean;
   error: string;
   onClose: () => void;
@@ -21,7 +23,7 @@ interface AdminSettingsDialogProps {
 }
 
 export function AdminSettingsDialog(props: AdminSettingsDialogProps) {
-  const { open, config, loading, error, onClose, onSave } = props;
+  const { open, config, contentSafetyAlerts, loading, error, onClose, onSave } = props;
 
   if (config) {
     return (
@@ -29,6 +31,7 @@ export function AdminSettingsDialog(props: AdminSettingsDialogProps) {
         key={config.configVersion}
         open={open}
         config={config}
+        contentSafetyAlerts={contentSafetyAlerts}
         loading={loading}
         error={error}
         onClose={onClose}
@@ -59,9 +62,10 @@ export function AdminSettingsDialog(props: AdminSettingsDialogProps) {
   );
 }
 
-function AdminSettingsForm({ open, config, loading, error, onClose, onSave }: {
+function AdminSettingsForm({ open, config, contentSafetyAlerts, loading, error, onClose, onSave }: {
   open: boolean;
   config: AdminConfig;
+  contentSafetyAlerts?: ContentSafetyAlerts;
   loading: boolean;
   error: string;
   onClose: () => void;
@@ -154,6 +158,7 @@ function AdminSettingsForm({ open, config, loading, error, onClose, onSave }: {
     >
       {loading && <p className="muted">読み込み中...</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
+      <ContentSafetyAlertsPanel alerts={contentSafetyAlerts} />
       <fieldset className="access-control-setting">
         <legend>受講者の利用</legend>
         <label className="switch-control">

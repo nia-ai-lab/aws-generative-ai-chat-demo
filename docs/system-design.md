@@ -372,7 +372,11 @@ Output料金(円) = Outputトークン数 × Output単価(USD / 1M tokens) × US
 
 ### 3.11 Bedrock Guardrails
 
-受講者と管理者は、次の論理プリセットをチェックボックスでゼロ個以上選択する。初期値は双方とも空配列とし、アプリ標準ではGuardrailを自動適用しない。受講者の選択はブラウザタブの `sessionStorage` に保存されるため、同じCognito IDを使用する別の受講者には波及しない。管理者の必須選択だけはDynamoDBに保存され、全受講者へ共通適用する。
+受講者と管理者は、次の論理プリセットをチェックボックスでゼロ個以上選択する。受講者の選択はブラウザタブの `sessionStorage` に保存されるため、同じCognito IDを使用する別の受講者には波及しない。管理者の必須選択だけはDynamoDBに保存され、全受講者へ共通適用する。
+
+管理者以外の受講者には `content-safety`（コンテンツ保護）を常に適用する（`PARTICIPANT_LOCKED_GUARDRAIL_KEYS`）。Chat Lambda が受講者の選択に必ず加えるため、クライアントを改変しても外せない。受講者設定ではチェック済みで操作できないチェックボックスとして表示する。管理者はデモのためにオン・オフできる。
+
+コンテンツ保護の5分類（HATE、INSULTS、SEXUAL、VIOLENCE、MISCONDUCT）で受講者の会話がブロックされると、Chat Lambda は DynamoDB の `ContentSafetyBlockTable`（パーティションキー: 10分単位の時間帯の開始時刻、ソートキー: `actorId`、2時間で TTL 削除）の回数を1増やし、`CHAT_COMPLETED` に `contentSafetyBlocked` とその時間帯の回数 `contentSafetyBlocksInWindow` を記録する。メトリクスフィルター（`GenerativeAIChat` / `ContentSafetyBlocksPerParticipant`）がこの回数を最大値で集計し、アラーム `generative-ai-chat-content-safety-blocks` は10分間の最大値が5以上で ALARM になる。管理者のブロックは数えない。管理者 API `GET /admin/alerts` はアラームの状態と直近1時間の受講者別ブロック回数を返し、管理者画面は1分ごとに取得して、アラーム中はヘッダーに「コンテンツ保護アラート」を表示する。
 
 | 論理キー | 表示名 | 主な設定 |
 |---|---|---|
@@ -622,6 +626,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 - 最大アウトプットトークン（初期値4,096）
 - Guardrail（初期値なし。事前定義プリセットをチェックボックスで複数選択）
 - 管理者必須 Guardrail がある場合は解除不能であることを表示
+- 受講者アカウントでは「コンテンツ保護」をチェック済み・操作不可で表示（管理者アカウントでは任意）
 - Web検索、RAG（社内規定検索）、RAG（製品情報検索）、人事ツール。初期値はすべてオフで、管理者が許可した項目だけを表示
 - デフォルトに戻す（Temperature、Top P、最大アウトプットトークンを初期値へ戻し、ペルソナは維持。「適用」で確定）
 - 適用
@@ -629,6 +634,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 
 #### 管理者設定ダイアログ
 
+- コンテンツ保護のアラート（アラームの状態、直近1時間の受講者別ブロック回数。しきい値以上の行を強調）
 - 受講者の利用（利用を許可）
 - アプリ既定プロンプト
 - `$DATETIME` / `$TIMEZONE` 挿入ボタン
@@ -762,6 +768,7 @@ Web Search Gatewayを作成・削除するカスタムリソースLambdaには�
 - Lambda throttle が 1 回以上
 - AgentCore P99 が設定 SLA を超過
 - Guardrail block が急増
+- 受講者1人のコンテンツ保護ブロックが10分間に5回以上（`generative-ai-chat-content-safety-blocks`、実装済み。管理者画面に表示）
 - DynamoDB 更新競合が連続発生
 
 ## 11. セキュリティ設計
@@ -783,7 +790,7 @@ Web Search Gatewayを作成・削除するカスタムリソースLambdaには�
 
 ### 11.2 Guardrail 初期方針
 
-- デフォルトは適用なしとし、受講者が機能差を比較できるようにする
+- 受講者にはコンテンツ保護を常に適用し、それ以外は適用なしを初期値として受講者が機能差を比較できるようにする。コンテンツ保護の有無の比較は管理者アカウントで行う
 - 受講者は事前定義プリセットをブラウザセッション単位で複数選択する
 - 管理者はDynamoDBに必須プリセットを保存し、受講者は解除できない
 - IDと番号付きバージョンはサーバー側カタログからだけ解決する

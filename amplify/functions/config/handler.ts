@@ -1,18 +1,51 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
+import { CloudWatchClient, DescribeAlarmsCommand } from '@aws-sdk/client-cloudwatch';
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
-import { updateAdminConfigSchema } from '../../../shared/api-schema.js';
+import {
+  CONTENT_SAFETY_ALERT_RULE,
+  updateAdminConfigSchema,
+  type ContentSafetyAlerts,
+} from '../../../shared/api-schema.js';
 import { PUBLIC_MODELS } from '../../../shared/model-catalog.js';
 import { getAuthContext, requireAdmin } from '../shared/auth.js';
 import { CONFIG_KEY, documentClient, readConfig } from '../shared/config.js';
+import { listRecentContentSafetyBlocks, toAlarmState } from '../shared/content-safety-alerts.js';
 import { errorResponse, jsonResponse } from '../shared/http.js';
+
+const cloudWatch = new CloudWatchClient({});
+
+async function contentSafetyAlarm(): Promise<Pick<ContentSafetyAlerts, 'alarmState' | 'alarmUpdatedAt'>> {
+  const alarmName = process.env.CONTENT_SAFETY_ALARM_NAME;
+  if (!alarmName) return { alarmState: 'UNKNOWN' };
+  try {
+    const result = await cloudWatch.send(new DescribeAlarmsCommand({ AlarmNames: [alarmName] }));
+    const alarm = result.MetricAlarms?.[0];
+    return {
+      alarmState: toAlarmState(alarm?.StateValue),
+      alarmUpdatedAt: alarm?.StateUpdatedTimestamp?.toISOString(),
+    };
+  } catch (error) {
+    console.error(JSON.stringify({
+      eventType: 'CONTENT_SAFETY_ALARM_UNAVAILABLE',
+      errorType: error instanceof Error ? error.name : 'UnknownError',
+    }));
+    return { alarmState: 'UNKNOWN' };
+  }
+}
+
+async function contentSafetyAlerts(): Promise<ContentSafetyAlerts> {
+  const now = new Date();
+  const [alarm, participants] = await Promise.all([contentSafetyAlarm(), listRecentContentSafetyBlocks(now)]);
+  return { ...alarm, ...CONTENT_SAFETY_ALERT_RULE, checkedAt: now.toISOString(), participants };
+}
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(event, 204, {});
 
   try {
     const auth = getAuthContext(event);
-    const isAdminPath = event.path.endsWith('/admin/config');
+    const isAdminPath = event.path.includes('/admin/');
 
     if (!isAdminPath && event.httpMethod === 'GET') {
       const config = await readConfig();
@@ -27,6 +60,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }
 
     requireAdmin(auth);
+    if (event.path.endsWith('/admin/alerts')) {
+      if (event.httpMethod !== 'GET') return errorResponse(event, 405, 'METHOD_NOT_ALLOWED');
+      return jsonResponse(event, 200, await contentSafetyAlerts());
+    }
     if (event.httpMethod === 'GET') return jsonResponse(event, 200, await readConfig());
     if (event.httpMethod !== 'PUT') return errorResponse(event, 405, 'METHOD_NOT_ALLOWED');
 

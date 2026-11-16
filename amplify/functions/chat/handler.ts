@@ -7,11 +7,13 @@ import {
   type GuardrailTraceSummary,
   type ToolCallSummary,
 } from '../../../shared/api-schema.js';
+import { withLockedGuardrailKeys } from '../../../shared/guardrail-catalog.js';
 import { MODEL_CATALOG, supportsSamplingParameters } from '../../../shared/model-catalog.js';
 import { estimateModelInvocationCost, type ModelCostEstimate } from '../../../shared/model-pricing.js';
 import { dateInTimeZone, expandPromptVariables } from '../../../shared/prompt-variables.js';
 import { bearerToken, getAuthContext, isAdmin } from '../shared/auth.js';
 import { readConfig } from '../shared/config.js';
+import { isContentSafetyBlocked, recordContentSafetyBlock } from '../shared/content-safety-alerts.js';
 import { corsHeaders } from '../shared/http.js';
 import { resolveGuardrail } from '../shared/guardrails.js';
 import { actorId, runtimeSessionId } from '../shared/session-isolation.js';
@@ -116,12 +118,14 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
   let requestedToolKeys: string[] = [];
   let effectiveToolKeys: string[] = [];
   let runtimeStatus: number | undefined;
+  let adminRequest = false;
 
   try {
     const auth = getAuthContext(event);
+    adminRequest = isAdmin(auth);
     const token = bearerToken(event);
     const config = await readConfig();
-    if (!config.participantAccessEnabled && !isAdmin(auth)) {
+    if (!config.participantAccessEnabled && !adminRequest) {
       console.info(JSON.stringify({
         eventType: 'PARTICIPANT_ACCESS_REJECTED',
         timestamp: new Date().toISOString(),
@@ -141,10 +145,12 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
     ({ temperature, topP, maxOutputTokens } = agentGenerationConfig);
     userMessage = input.message;
     requiredGuardrailKeys = config.requiredGuardrailKeys;
-    participantGuardrailKeys = input.guardrailKeys;
+    // Participants cannot turn off the locked presets (content safety); admins can for demos.
+    const appliedParticipantGuardrailKeys = withLockedGuardrailKeys(adminRequest, input.guardrailKeys);
+    participantGuardrailKeys = appliedParticipantGuardrailKeys;
     requestedToolKeys = input.toolKeys;
     effectiveToolKeys = input.toolKeys.filter((key) => config.enabledToolKeys.includes(key));
-    const guardrail = resolveGuardrail(config.requiredGuardrailKeys, input.guardrailKeys);
+    const guardrail = resolveGuardrail(config.requiredGuardrailKeys, appliedParticipantGuardrailKeys);
     effectiveGuardrailKey = guardrail.effectiveGuardrailKey;
     auditActorId = actorId(auth.sub, input.browserSessionId);
     const isolatedRuntimeSessionId = runtimeSessionId(auditActorId, input.conversationSessionId);
@@ -235,6 +241,20 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
     }
     stream.end();
 
+    const contentSafetyBlocked = isContentSafetyBlocked(guardrailTrace);
+    let contentSafetyBlocksInWindow: number | undefined;
+    if (contentSafetyBlocked && !adminRequest) {
+      try {
+        contentSafetyBlocksInWindow = await recordContentSafetyBlock(auditActorId);
+      } catch (error) {
+        console.error(JSON.stringify({
+          eventType: 'CONTENT_SAFETY_BLOCK_RECORD_FAILED',
+          requestId,
+          errorType: error instanceof Error ? error.name : 'UnknownError',
+        }));
+      }
+    }
+
     console.info(JSON.stringify({
       eventType: 'CHAT_COMPLETED',
       startedAt: startedAtIso,
@@ -256,6 +276,8 @@ export const handler = awslambda.streamifyResponse<APIGatewayProxyEvent>(async (
       participantGuardrailKeys,
       effectiveGuardrailKey,
       guardrailTrace,
+      contentSafetyBlocked,
+      contentSafetyBlocksInWindow,
       requestedToolKeys,
       effectiveToolKeys,
       toolCalls,

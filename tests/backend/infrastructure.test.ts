@@ -263,4 +263,35 @@ describe('application infrastructure', () => {
     }
     expect(policies).toContain('foundation-model/anthropic.claude-haiku-5-5*');
   });
+
+  it('alarms when one participant is blocked by content safety too often', () => {
+    template.hasResourceProperties('AWS::Logs::MetricFilter', {
+      FilterPattern: '{ $.eventType = "CHAT_COMPLETED" && $.contentSafetyBlocksInWindow >= 1 }',
+      MetricTransformations: [Match.objectLike({
+        MetricNamespace: 'GenerativeAIChat',
+        MetricName: 'ContentSafetyBlocksPerParticipant',
+        MetricValue: '$.contentSafetyBlocksInWindow',
+      })],
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'generative-ai-chat-content-safety-blocks',
+      Threshold: 5,
+      Period: 600,
+      Statistic: 'Maximum',
+      ComparisonOperator: 'GreaterThanOrEqualToThreshold',
+      TreatMissingData: 'notBreaching',
+    });
+    template.hasResourceProperties('AWS::DynamoDB::Table', {
+      KeySchema: [
+        { AttributeName: 'windowStart', KeyType: 'HASH' },
+        { AttributeName: 'actorId', KeyType: 'RANGE' },
+      ],
+      TimeToLiveSpecification: { AttributeName: 'expiresAt', Enabled: true },
+    });
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([Match.objectLike({ Action: 'cloudwatch:DescribeAlarms' })]),
+      },
+    });
+  });
 });

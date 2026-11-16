@@ -9,6 +9,7 @@ import {
   aws_apigateway as apigateway,
   aws_bedrock as bedrock,
   aws_bedrockagentcore as agentcore,
+  aws_cloudwatch as cloudwatch,
   aws_cognito as cognito,
   aws_dynamodb as dynamodb,
   aws_iam as iam,
@@ -28,10 +29,12 @@ import {
   addAgentCoreTraceDelivery,
 } from './agentcore-observability.js';
 import {
+  CONTENT_SAFETY_FILTER_TYPES,
   GUARDRAIL_POLICY_KEYS,
   effectiveGuardrailKey,
   type GuardrailPolicyKey,
 } from '../../shared/guardrail-catalog.js';
+import { CONTENT_SAFETY_ALERT_RULE } from '../../shared/api-schema.js';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(currentDirectory, '../..');
@@ -78,7 +81,7 @@ function guardrailPolicyProperties(
   'contentPolicyConfig' | 'sensitiveInformationPolicyConfig' | 'topicPolicyConfig' | 'wordPolicyConfig'> {
   const contentFilters: bedrock.CfnGuardrail.ContentFilterConfigProperty[] = [];
   if (policies.includes('content-safety')) {
-    contentFilters.push(...['HATE', 'INSULTS', 'SEXUAL', 'VIOLENCE', 'MISCONDUCT'].map((type) => ({
+    contentFilters.push(...CONTENT_SAFETY_FILTER_TYPES.map((type) => ({
       type,
       inputStrength: 'MEDIUM',
       outputStrength: 'MEDIUM',
@@ -319,6 +322,17 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
 
   const configTable = new dynamodb.Table(scope, 'ConfigTable', {
     partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
+    billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    encryption: dynamodb.TableEncryption.AWS_MANAGED,
+    pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: false },
+    removalPolicy: RemovalPolicy.DESTROY,
+  });
+
+  // Per-participant content-safety block counts in fixed windows; items expire after two hours.
+  const contentSafetyBlockTable = new dynamodb.Table(scope, 'ContentSafetyBlockTable', {
+    partitionKey: { name: 'windowStart', type: dynamodb.AttributeType.STRING },
+    sortKey: { name: 'actorId', type: dynamodb.AttributeType.STRING },
+    timeToLiveAttribute: 'expiresAt',
     billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     encryption: dynamodb.TableEncryption.AWS_MANAGED,
     pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: false },
@@ -851,7 +865,10 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     destinationReady: endpointLogs.ready,
   });
 
-  const commonEnvironment = { CONFIG_TABLE_NAME: configTable.tableName };
+  const commonEnvironment = {
+    CONFIG_TABLE_NAME: configTable.tableName,
+    CONTENT_SAFETY_TABLE_NAME: contentSafetyBlockTable.tableName,
+  };
   const authorizerFunction = nodeFunction(
     scope,
     'AuthorizerFunction',
@@ -888,6 +905,38 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
   );
   configTable.grantReadWriteData(configFunction);
   configTable.grantReadData(chatFunction);
+  contentSafetyBlockTable.grantReadData(configFunction);
+  contentSafetyBlockTable.grantWriteData(chatFunction);
+
+  // CHAT_COMPLETED carries the participant's block count in the current window; the alarm fires
+  // when any participant reaches the threshold within one window.
+  const contentSafetyBlocksMetric = new logs.MetricFilter(scope, 'ContentSafetyBlocksMetricFilter', {
+    logGroup: chatFunction.logGroup,
+    filterPattern: logs.FilterPattern.literal(
+      '{ $.eventType = "CHAT_COMPLETED" && $.contentSafetyBlocksInWindow >= 1 }',
+    ),
+    metricNamespace: 'GenerativeAIChat',
+    metricName: 'ContentSafetyBlocksPerParticipant',
+    metricValue: '$.contentSafetyBlocksInWindow',
+  }).metric({
+    statistic: cloudwatch.Stats.MAXIMUM,
+    period: Duration.minutes(CONTENT_SAFETY_ALERT_RULE.windowMinutes),
+  });
+  const contentSafetyAlarm = new cloudwatch.Alarm(scope, 'ContentSafetyBlocksAlarm', {
+    alarmName: 'generative-ai-chat-content-safety-blocks',
+    alarmDescription: `A participant was blocked by content safety ${CONTENT_SAFETY_ALERT_RULE.threshold} or more times `
+      + `within ${CONTENT_SAFETY_ALERT_RULE.windowMinutes} minutes. Check the admin screen.`,
+    metric: contentSafetyBlocksMetric,
+    threshold: CONTENT_SAFETY_ALERT_RULE.threshold,
+    comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+    evaluationPeriods: 1,
+    treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+  });
+  configFunction.addEnvironment('CONTENT_SAFETY_ALARM_NAME', contentSafetyAlarm.alarmName);
+  configFunction.addToRolePolicy(new iam.PolicyStatement({
+    actions: ['cloudwatch:DescribeAlarms'],
+    resources: [contentSafetyAlarm.alarmArn],
+  }));
 
   const accessLogs = new logs.LogGroup(scope, 'ApiAccessLogs', {
     encryptionKey: logKey,
@@ -943,10 +992,14 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
   const configResource = api.root.addResource('config');
   configResource.addMethod('GET', bufferedConfigIntegration, securedMethodOptions);
   configResource.addMethod('OPTIONS', optionsIntegration);
-  const adminConfigResource = api.root.addResource('admin').addResource('config');
+  const adminResource = api.root.addResource('admin');
+  const adminConfigResource = adminResource.addResource('config');
   adminConfigResource.addMethod('GET', bufferedConfigIntegration, securedMethodOptions);
   adminConfigResource.addMethod('PUT', bufferedConfigIntegration, securedMethodOptions);
   adminConfigResource.addMethod('OPTIONS', optionsIntegration);
+  const adminAlertsResource = adminResource.addResource('alerts');
+  adminAlertsResource.addMethod('GET', bufferedConfigIntegration, securedMethodOptions);
+  adminAlertsResource.addMethod('OPTIONS', optionsIntegration);
   const chatResource = api.root.addResource('chat');
   chatResource.addMethod('POST', streamingChatIntegration, securedMethodOptions);
   chatResource.addMethod('OPTIONS', optionsIntegration);

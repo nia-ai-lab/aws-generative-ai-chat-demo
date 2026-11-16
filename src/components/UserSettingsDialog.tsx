@@ -21,6 +21,8 @@ interface UserSettingsDialogProps {
   generationConfig: GenerationConfig;
   guardrailKeys: GuardrailPolicyKey[];
   requiredGuardrailKeys: GuardrailPolicyKey[];
+  /** Presets that are always applied for this user and shown as checked, disabled checkboxes. */
+  lockedGuardrailKeys?: readonly GuardrailPolicyKey[];
   toolKeys: ToolKey[];
   availableToolKeys: ToolKey[];
   onClose: () => void;
@@ -39,6 +41,7 @@ export function UserSettingsDialog({
   generationConfig,
   guardrailKeys,
   requiredGuardrailKeys,
+  lockedGuardrailKeys = [],
   toolKeys,
   availableToolKeys,
   onClose,
@@ -84,6 +87,7 @@ export function UserSettingsDialog({
   }
 
   function toggleGuardrail(key: GuardrailPolicyKey) {
+    if (lockedGuardrailKeys.includes(key)) return;
     setSelectedGuardrailKeys((current) => current.includes(key)
       ? current.filter((item) => item !== key)
       : [...current, key]);
@@ -148,7 +152,8 @@ export function UserSettingsDialog({
           <label className="check-row guardrail-check-row" key={key}>
             <input
               type="checkbox"
-              checked={selectedGuardrailKeys.includes(key)}
+              checked={lockedGuardrailKeys.includes(key) || selectedGuardrailKeys.includes(key)}
+              disabled={lockedGuardrailKeys.includes(key)}
               onChange={() => toggleGuardrail(key)}
             />
             <span>

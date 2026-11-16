@@ -2,8 +2,10 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 import outputs from '../../amplify_outputs.json';
 import {
   adminConfigSchema,
+  contentSafetyAlertsSchema,
   publicConfigSchema,
   type AdminConfig,
+  type ContentSafetyAlerts,
   type ChatRequest,
   type PublicConfig,
   type UpdateAdminConfig,
@@ -48,6 +50,10 @@ export async function getConfig(): Promise<PublicConfig> {
 
 export async function getAdminConfig(): Promise<AdminConfig> {
   return adminConfigSchema.parse(await requireJson(await authenticatedFetch('/admin/config')));
+}
+
+export async function getContentSafetyAlerts(): Promise<ContentSafetyAlerts> {
+  return contentSafetyAlertsSchema.parse(await requireJson(await authenticatedFetch('/admin/alerts')));
 }
 
 export async function updateAdminConfig(value: UpdateAdminConfig): Promise<AdminConfig> {

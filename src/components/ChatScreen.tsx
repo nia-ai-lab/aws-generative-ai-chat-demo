@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type Keyb
 import { LogOut, Send, Settings, Shield, Trash2 } from 'lucide-react';
 import type {
   AdminConfig,
+  ContentSafetyAlerts,
   GuardrailTraceSummary,
   PublicConfig,
   ToolCallSummary,
@@ -10,12 +11,12 @@ import type {
   UpdateAdminConfig,
 } from '../../shared/api-schema';
 import type { GenerationConfig } from '../../shared/generation-config';
-import type { GuardrailPolicyKey } from '../../shared/guardrail-catalog';
+import { lockedGuardrailKeysFor, type GuardrailPolicyKey } from '../../shared/guardrail-catalog';
 import { MODEL_CATALOG, type ModelKey } from '../../shared/model-catalog';
 import type { ModelUsage } from '../../shared/model-pricing';
 import type { ToolKey } from '../../shared/tool-catalog';
 import { safeErrorMessage } from '../../shared/errors';
-import { getAdminConfig, getConfig, streamChat, updateAdminConfig } from '../lib/api';
+import { getAdminConfig, getConfig, getContentSafetyAlerts, streamChat, updateAdminConfig } from '../lib/api';
 import { shouldSendOnKeyDown } from '../lib/keyboard';
 import { getBrowserTimeZone } from '../lib/time-zone';
 import {
@@ -32,6 +33,7 @@ import {
   setUserSystemPrompt,
 } from '../lib/session';
 import { AdminSettingsDialog } from './AdminSettingsDialog';
+import { hasContentSafetyAlert } from '../lib/content-safety-alerts';
 import { GuardrailTraceDetails } from './GuardrailTraceDetails';
 import { UserSettingsDialog } from './UserSettingsDialog';
 import { UsageCostDetails } from './UsageCostDetails';
@@ -61,6 +63,8 @@ interface ChatScreenProps {
   onSignOut: () => Promise<void>;
 }
 
+const CONTENT_SAFETY_ALERT_POLL_MS = 60_000;
+
 export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatScreenProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -75,6 +79,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
   const [adminConfig, setAdminConfig] = useState<AdminConfig>();
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState('');
+  const [contentSafetyAlerts, setContentSafetyAlerts] = useState<ContentSafetyAlerts>();
   const abortRef = useRef<AbortController | undefined>(undefined);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -82,6 +87,22 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    let active = true;
+    const refresh = () => {
+      getContentSafetyAlerts()
+        .then((alerts) => { if (active) setContentSafetyAlerts(alerts); })
+        .catch(() => undefined);
+    };
+    refresh();
+    const timer = window.setInterval(refresh, CONTENT_SAFETY_ALERT_POLL_MS);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [isAdmin]);
 
   useLayoutEffect(() => {
     const textarea = inputRef.current;
@@ -233,6 +254,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
     setAdminSettingsOpen(true);
     setAdminLoading(true);
     setAdminError('');
+    void getContentSafetyAlerts().then(setContentSafetyAlerts).catch(() => undefined);
     try {
       setAdminConfig(await getAdminConfig());
     } catch (error) {
@@ -272,6 +294,11 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
           <h1>Generative AI Chat</h1>
           {isAdmin && !config.participantAccessEnabled && (
             <span className="participant-access-status">受講者利用停止中</span>
+          )}
+          {isAdmin && contentSafetyAlerts && hasContentSafetyAlert(contentSafetyAlerts) && (
+            <button className="content-safety-alert-badge" type="button" onClick={() => void openAdminSettings()}>
+              コンテンツ保護アラート
+            </button>
           )}
         </div>
         <button
@@ -370,6 +397,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
         generationConfig={generationConfig}
         guardrailKeys={guardrailKeys}
         requiredGuardrailKeys={config.requiredGuardrailKeys}
+        lockedGuardrailKeys={lockedGuardrailKeysFor(isAdmin)}
         toolKeys={toolKeys}
         availableToolKeys={config.availableToolKeys}
         onClose={() => setUserSettingsOpen(false)}
@@ -378,6 +406,7 @@ export function ChatScreen({ config, isAdmin, onConfigChange, onSignOut }: ChatS
       <AdminSettingsDialog
         open={adminSettingsOpen}
         config={adminConfig}
+        contentSafetyAlerts={contentSafetyAlerts}
         loading={adminLoading}
         error={adminError}
         onClose={() => setAdminSettingsOpen(false)}

@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+img { max-width: 100%; }
+</style>
+<title>人事ツール構成図</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one wide architecture diagram (scrolls sideways on phones), then the request walkthrough and key points */
+:root {
+  --bg: #f6f8f9;
+  --surface: #ffffff;
+  --fg: #17212b;
+  --muted: #56636f;
+  --line: #c9d3db;
+  --accent: #1f6f8b;
+  --accent-soft: #e3f0f5;
+  --runtime: #eef5f8;
+  --warn: #a14d00;
+  --warn-soft: #fdf0e3;
+  --read: #e2efe6;
+  --read-fg: #22603a;
+  --write: #fbe6e2;
+  --write-fg: #9a3324;
+  --font-body: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10161b; --surface: #18222a; --fg: #e3eaef; --muted: #9aa9b5; --line: #34434f;
+    --accent: #6cc0dc; --accent-soft: #163340; --runtime: #132029;
+    --warn: #f0a960; --warn-soft: #3a2614;
+    --read: #183526; --read-fg: #8fd5a6; --write: #3d1f1a; --write-fg: #f3a597;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10161b; --surface: #18222a; --fg: #e3eaef; --muted: #9aa9b5; --line: #34434f;
+  --accent: #6cc0dc; --accent-soft: #163340; --runtime: #132029;
+  --warn: #f0a960; --warn-soft: #3a2614;
+  --read: #183526; --read-fg: #8fd5a6; --write: #3d1f1a; --write-fg: #f3a597;
+  color-scheme: dark;
+}
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.7;
+}
+.page {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding-block: 32px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 28px;
+}
+header { display: grid; gap: 6px; }
+h1 { font-size: 26px; line-height: 1.3; margin: 0; text-wrap: balance; }
+h2 { font-size: 18px; margin: 0 0 10px; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 68ch; }
+.diagram {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow-x: auto;
+  padding: 12px;
+}
+.diagram svg { display: block; width: 100%; min-width: 980px; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 26px; height: 0; border-top: 2px solid var(--muted); }
+.swatch.dash { border-top-style: dashed; }
+.swatch.key { border-top-color: var(--accent); border-top-width: 3px; }
+.chip { display: inline-block; font-size: 12px; padding: 0 7px; border-radius: 4px; line-height: 20px; }
+.chip.read { background: var(--read); color: var(--read-fg); }
+.chip.write { background: var(--write); color: var(--write-fg); }
+.chip.check { background: var(--warn-soft); color: var(--warn); }
+.cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; }
+@media (max-width: 760px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+ol.flow { margin: 0; padding-left: 1.4em; display: grid; gap: 8px; }
+ol.flow li { padding-left: 4px; }
+.points { display: grid; gap: 12px; }
+.point { border-left: 3px solid var(--line); padding: 2px 0 2px 14px; }
+.point.key { border-left-color: var(--accent); }
+.point strong { display: block; }
+.point p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+code { font-family: var(--font-mono); font-size: 0.9em; }
+
+/* SVG */
+svg text { font-family: var(--font-body); }
+.box { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; }
+.box-key { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.4; }
+.runtime { fill: var(--runtime); stroke: var(--accent); stroke-width: 1.6; }
+.t-title { font-size: 14px; font-weight: 700; fill: var(--fg); }
+.t-big { font-size: 15px; font-weight: 700; fill: var(--accent); }
+.t-body { font-size: 12px; fill: var(--muted); }
+.t-strong { font-size: 12px; font-weight: 700; fill: var(--accent); }
+.t-cap { font-size: 11px; font-weight: 700; fill: var(--muted); letter-spacing: 0.06em; }
+.t-mono { font-family: var(--font-mono); font-size: 12px; fill: var(--fg); }
+.t-desc { font-size: 12px; fill: var(--fg); }
+.t-warn { font-size: 12px; font-weight: 700; fill: var(--warn); }
+.t-label { font-size: 11.5px; fill: var(--muted); }
+.t-label-key { font-size: 11.5px; font-weight: 700; fill: var(--accent); }
+.row-line { stroke: var(--line); stroke-width: 1; }
+.badge-read { fill: var(--read); }
+.badge-write { fill: var(--write); }
+.badge-read-t { font-size: 11px; font-weight: 700; fill: var(--read-fg); }
+.badge-write-t { font-size: 11px; font-weight: 700; fill: var(--write-fg); }
+.edge { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+.edge.ret { stroke-dasharray: 5 4; }
+.edge.key { stroke: var(--accent); stroke-width: 2.2; }
+.head { fill: var(--muted); }
+.head-key { fill: var(--accent); }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>人事ツール構成図</h1>
+    <p class="lede">デモアプリの「人事ツール」が、受講者の質問からツール実行までどう動くかを示します。人事ツールは AgentCore Gateway ではなく、エージェントの中のコードとして動きます。権限の判定はモデルの外で、ログインの証明（トークン）を使って行います。</p>
+  </header>
+
+  <div class="diagram" role="img" aria-label="人事ツールの構成図。ブラウザ、API Gateway、Chat Lambda を経て AgentCore Runtime のエージェントに届き、本人の特定、モデルとツールのループ、人事ツールの順に処理される。外部に Bedrock モデル、ナレッジベース、AgentCore Memory、AgentCore Gateway がある。">
+    <svg viewBox="0 0 1120 710" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="head"/>
+        </marker>
+        <marker id="arw-key" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="head-key"/>
+        </marker>
+      </defs>
+
+      <!-- Top row: request path -->
+      <rect class="box" x="20" y="30" width="200" height="150" rx="8"/>
+      <text class="t-title" x="36" y="56">受講者のブラウザ</text>
+      <text class="t-body" x="36" y="80">React（Amplify Hosting）</text>
+      <text class="t-body" x="36" y="104">・人事ツール on / off</text>
+      <text class="t-body" x="36" y="124">・「人事ツールを N 回</text>
+      <text class="t-body" x="36" y="142">　実行しました」を表示</text>
+
+      <rect class="box" x="260" y="30" width="200" height="150" rx="8"/>
+      <text class="t-title" x="276" y="56">API Gateway</text>
+      <text class="t-body" x="276" y="80">Lambda オーソライザーで</text>
+      <text class="t-body" x="276" y="98">Cognito トークンを確認</text>
+
+      <rect class="box" x="500" y="30" width="260" height="150" rx="8"/>
+      <text class="t-title" x="516" y="56">Chat Lambda</text>
+      <text class="t-body" x="516" y="80">・管理設定から有効なツールを決定</text>
+      <text class="t-body" x="516" y="100">・hrToolsEnabled と今日の日付を付与</text>
+      <text class="t-body" x="516" y="120">・利用者のトークンをそのまま転送</text>
+      <text class="t-body" x="516" y="140">・toolCalls を検証してログに記録</text>
+
+      <rect class="box" x="800" y="30" width="300" height="66" rx="8"/>
+      <text class="t-title" x="816" y="56">DynamoDB（管理設定）</text>
+      <text class="t-body" x="816" y="80">利用可能なツールに「人事ツール」を含める</text>
+
+      <rect class="box" x="800" y="114" width="300" height="66" rx="8"/>
+      <text class="t-title" x="816" y="140">CloudWatch Logs</text>
+      <text class="t-body" x="816" y="164">CHAT_COMPLETED に toolCalls を記録</text>
+
+      <line class="edge" x1="220" y1="86" x2="258" y2="86" marker-end="url(#arw)"/>
+      <line class="edge" x1="460" y1="86" x2="498" y2="86" marker-end="url(#arw)"/>
+      <line class="edge ret" x1="500" y1="150" x2="462" y2="150" marker-end="url(#arw)"/>
+      <line class="edge ret" x1="260" y1="150" x2="222" y2="150" marker-end="url(#arw)"/>
+      <line class="edge" x1="760" y1="63" x2="798" y2="63" marker-end="url(#arw)"/>
+      <line class="edge" x1="760" y1="147" x2="798" y2="147" marker-end="url(#arw)"/>
+
+      <!-- Lambda to Runtime -->
+      <line class="edge" x1="580" y1="180" x2="580" y2="238" marker-end="url(#arw)"/>
+      <text class="t-label" x="572" y="214" text-anchor="end">トークン・hrToolsEnabled・今日の日付</text>
+      <line class="edge ret" x1="700" y1="240" x2="700" y2="182" marker-end="url(#arw)"/>
+      <text class="t-label" x="708" y="214">回答 ＋ toolCalls（SSE）</text>
+
+      <!-- AgentCore Runtime -->
+      <rect class="runtime" x="20" y="240" width="740" height="460" rx="10"/>
+      <text class="t-big" x="40" y="267">AgentCore Runtime（LangGraph エージェント）</text>
+      <text class="t-body" x="740" y="267" text-anchor="end">Cognito JWT 認証で署名・期限を検証済み</text>
+
+      <rect class="box-key" x="40" y="285" width="300" height="118" rx="8"/>
+      <text class="t-title" x="56" y="310">① 本人の特定（main.py）</text>
+      <text class="t-body" x="56" y="334">検証済みトークンの sub から</text>
+      <text class="t-body" x="56" y="354">社員番号 AC-xxxxx を決める</text>
+      <text class="t-strong" x="56" y="380">会話の文面（自己申告）は使わない</text>
+
+      <rect class="box" x="370" y="285" width="370" height="118" rx="8"/>
+      <text class="t-title" x="386" y="310">② モデルとツールのループ（graph.py）</text>
+      <text class="t-body" x="386" y="334">call_model：ツールの説明を渡し、モデルが選ぶ</text>
+      <text class="t-body" x="386" y="354">execute_tools：選ばれたツールを実行</text>
+      <text class="t-body" x="386" y="380">ツールの引数はモデルが作るので信用しない</text>
+
+      <line class="edge key" x1="190" y1="403" x2="190" y2="433" marker-end="url(#arw-key)"/>
+      <text class="t-label-key" x="200" y="423">社員番号（会話の外から渡す）</text>
+      <line class="edge" x1="555" y1="405" x2="555" y2="433" marker-start="url(#arw)" marker-end="url(#arw)"/>
+      <text class="t-label" x="565" y="423">ツール名と引数 ／ 結果</text>
+
+      <rect class="box" x="40" y="435" width="700" height="250" rx="8"/>
+      <text class="t-title" x="56" y="460">③ 人事ツール（hr_tools.py・架空の人事システム、DB なし）</text>
+      <text class="t-cap" x="56" y="484">種類</text>
+      <text class="t-cap" x="104" y="484">ツール</text>
+      <text class="t-cap" x="310" y="484">内容</text>
+      <text class="t-cap" x="430" y="484">アプリ側のチェック</text>
+      <line class="row-line" x1="56" y1="492" x2="724" y2="492"/>
+
+      <rect class="badge-read" x="56" y="496" width="36" height="20" rx="4"/>
+      <text class="badge-read-t" x="74" y="510" text-anchor="middle">読む</text>
+      <text class="t-mono" x="104" y="510">search_hr_policies</text>
+      <text class="t-desc" x="310" y="510">規程を検索</text>
+      <text class="t-body" x="430" y="510">ナレッジベースから条文を取得し出典に追加</text>
+
+      <rect class="badge-read" x="56" y="523" width="36" height="20" rx="4"/>
+      <text class="badge-read-t" x="74" y="537" text-anchor="middle">読む</text>
+      <text class="t-mono" x="104" y="537">get_leave_balance</text>
+      <text class="t-desc" x="310" y="537">休暇の残日数</text>
+      <text class="t-body" x="430" y="537">初期値（年休 残り10日）＋履歴から計算</text>
+
+      <rect class="badge-read" x="56" y="550" width="36" height="20" rx="4"/>
+      <text class="badge-read-t" x="74" y="564" text-anchor="middle">読む</text>
+      <text class="t-mono" x="104" y="564">list_my_leave_requests</text>
+      <text class="t-desc" x="310" y="564">申請の一覧</text>
+      <text class="t-body" x="430" y="564">本人の下書きと提出済みだけ</text>
+
+      <rect class="badge-read" x="56" y="577" width="36" height="20" rx="4"/>
+      <text class="badge-read-t" x="74" y="591" text-anchor="middle">読む</text>
+      <text class="t-mono" x="104" y="591">get_payslip</text>
+      <text class="t-desc" x="310" y="591">給与明細</text>
+      <text class="t-warn" x="430" y="591">本人照合：本人以外は拒否</text>
+
+      <rect class="badge-write" x="56" y="604" width="36" height="20" rx="4"/>
+      <text class="badge-write-t" x="74" y="618" text-anchor="middle">書く</text>
+      <text class="t-mono" x="104" y="618">create_leave_request_draft</text>
+      <text class="t-desc" x="310" y="618">下書きを作成</text>
+      <text class="t-body" x="430" y="618">営業日・残日数・申請期限を確認</text>
+
+      <rect class="badge-write" x="56" y="631" width="36" height="20" rx="4"/>
+      <text class="badge-write-t" x="74" y="645" text-anchor="middle">書く</text>
+      <text class="t-mono" x="104" y="645">submit_leave_request</text>
+      <text class="t-desc" x="310" y="645">申請を提出</text>
+      <text class="t-warn" x="430" y="645">承認ガード：本人の「はい」が必要</text>
+
+      <line class="row-line" x1="56" y1="658" x2="724" y2="658"/>
+      <text class="t-warn" x="56" y="676">全ツール共通：1ターン 8 回まで。超えたら人事部への相談を案内</text>
+
+      <!-- External services -->
+      <rect class="box" x="800" y="260" width="300" height="90" rx="8"/>
+      <text class="t-title" x="816" y="288">Amazon Bedrock（モデル）</text>
+      <text class="t-body" x="816" y="312">Converse API ＋ ガードレール</text>
+      <text class="t-body" x="816" y="332">ツールの説明を見て呼び出しを決める</text>
+      <line class="edge" x1="740" y1="305" x2="798" y2="305" marker-start="url(#arw)" marker-end="url(#arw)"/>
+
+      <rect class="box" x="800" y="370" width="300" height="90" rx="8"/>
+      <text class="t-title" x="816" y="398">Bedrock ナレッジベース</text>
+      <text class="t-body" x="816" y="422">AnyCompany 社内規程 15 本</text>
+      <text class="t-body" x="816" y="442">S3 Vectors・300 トークン固定長</text>
+      <path class="edge" d="M740,506 H772 V415 H798" marker-end="url(#arw)"/>
+
+      <rect class="box" x="800" y="480" width="300" height="90" rx="8"/>
+      <text class="t-title" x="816" y="508">AgentCore Memory</text>
+      <text class="t-body" x="816" y="532">会話履歴を保存（3 日）</text>
+      <text class="t-body" x="816" y="552">＝休暇申請と残日数の「状態」</text>
+      <line class="edge" x1="760" y1="525" x2="798" y2="525" marker-start="url(#arw)" marker-end="url(#arw)"/>
+
+      <rect class="box" x="800" y="590" width="300" height="95" rx="8"/>
+      <text class="t-title" x="816" y="618">AgentCore Gateway</text>
+      <text class="t-body" x="816" y="642">Web 検索だけを担当</text>
+      <text class="t-body" x="816" y="662">人事ツールはここを通らない</text>
+      <line class="edge" x1="760" y1="637" x2="798" y2="637" marker-end="url(#arw)"/>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <span><i class="swatch"></i>要求</span>
+    <span><i class="swatch dash"></i>応答（ストリーミング）</span>
+    <span><i class="swatch key"></i>本人の情報（会話の外から渡す）</span>
+    <span><i class="chip read">読む</i>確認なしで実行</span>
+    <span><i class="chip write">書く</i>下書き → 本人の承認 → 提出</span>
+    <span><i class="chip check">チェック</i>モデルの外のコードで判定</span>
+  </div>
+
+  <div class="cols">
+    <section>
+      <h2>1 回の流れ（例：「B さんの給与明細を見せて」）</h2>
+      <ol class="flow">
+        <li>受講者が設定で人事ツールをオンにして質問します。ブラウザは Cognito のトークンを付けて送ります。</li>
+        <li>Chat Lambda は管理設定で人事ツールが使えるか確かめ、<code>hrToolsEnabled</code> と今日の日付を付けて、利用者のトークンのまま AgentCore Runtime を呼びます。</li>
+        <li>Runtime がトークンを検証します。エージェントはその <code>sub</code> から社員番号を決めます。</li>
+        <li>モデルが <code>get_payslip(employee="Bさん")</code> を呼ぶと決めます。</li>
+        <li>ツールは引数を社員番号と照合し、本人ではないので <code>ACCESS_DENIED</code> を返します。金額は作らないので、モデルに渡りません。</li>
+        <li>回答と一緒に実行記録（<code>toolCalls</code>）が返り、画面に「人事ツールを 1 回実行しました（アプリが 1 件を止めました）」と表示されます。同じ内容が CloudWatch Logs にも残ります。</li>
+      </ol>
+    </section>
+    <section class="points">
+      <h2>要点</h2>
+      <div class="point key">
+        <strong>判定はモデルの外で行う</strong>
+        <p>本人照合と承認ガードはツールのコードにあります。プロンプトでモデルをだましても、他人の明細を作る仕組みがありません。</p>
+      </div>
+      <div class="point">
+        <strong>人事データは DB なし</strong>
+        <p>金額と休暇の初期値はコードの固定値です。申請の状態は会話履歴から計算し直すので、「クリア」で初期状態に戻ります。</p>
+      </div>
+      <div class="point">
+        <strong>受講者の操作は on / off だけ</strong>
+        <p>管理者が「利用可能なツール」で人事ツールを許可し、受講者は設定でオンにするだけで一通り試せます。</p>
+      </div>
+      <div class="point">
+        <strong>本番なら Gateway の後ろへ</strong>
+        <p>実際の人事システムにつなぐなら、人事 API を AgentCore Gateway のターゲットにします。本人の判定は API 側で行います。</p>
+      </div>
+    </section>
+  </div>
+</div>
+</body>
+</html>

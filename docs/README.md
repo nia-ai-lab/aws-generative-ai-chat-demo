@@ -10,6 +10,8 @@ AWS トレーニングコース「Generative AI Essentials on AWS」で受講者
 - [モジュール別デモ実施ガイド](./module-demo-guide.md)
 - [Web検索・RAGデモガイド](./tool-rag-demo-guide.md)
 - [顧客サポートで学ぶ責任あるAIデモガイド](./customer-support-responsible-ai-demo-guide.md)
+- [M6 総振り返りデモガイド（AgentCore の動作）](./agentcore-review-demo-guide.md)
+- [人事ツール構成図（HTML）](./diagrams/hr-tools-architecture.html)
 - [30同時実行負荷試験ガイド](./load-test-guide.md)
 - [30同時実行負荷試験結果（2026-08-18）](./load-test-result-2026-08-18.md)
 

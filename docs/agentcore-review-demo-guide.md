@@ -29,13 +29,13 @@ M6 のスライド「デモ — Amazon Bedrock AgentCore の動作」（スラ�
    - 受講者画面: 本アプリ（受講者アカウントでログイン）
    - 講師画面: CloudWatch（ロググループ `/aws/lambda/generative-ai-chat-stream` と `/aws/bedrock-agentcore/runtimes/` で始まる Runtime のロググループ）
 4. 受講者アカウントでは「コンテンツ保護」の Guardrail が常に適用され、外せない。場面5で触れる。
-5. 人事ツールの構成図（ブラウザ → API Gateway → Chat Lambda → AgentCore Runtime → 人事ツール、外部に Bedrock モデル、ナレッジベース、AgentCore Memory、AgentCore Gateway）を表示できるようにしておく。
+5. [人事ツールの構成図](./diagrams/hr-tools-architecture.html)（ブラウザ → API Gateway → Chat Lambda → AgentCore Runtime → 人事ツール、外部に Bedrock モデル、ナレッジベース、AgentCore Memory、AgentCore Gateway）を表示できるようにしておく。HTML ファイルのため、GitHub 上では表示されない。リポジトリを取得してブラウザで開く。
 
 ## 4. 手順
 
 ### 場面0: 導入（スライド26）
 
-構成図を見せ、次のように話す。
+[人事ツールの構成図](./diagrams/hr-tools-architecture.html)を見せ、次のように話す。
 
 > このアプリそのものが、AgentCore Runtime の上でエージェントとして動いています。今日はスライドの4つの場面（設定、ループ、メモリ、トレース）を、このアプリで実際に見ます。
 

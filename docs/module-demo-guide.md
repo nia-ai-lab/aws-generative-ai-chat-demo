@@ -64,7 +64,7 @@ RAG 文書は [knowledge-base/README.md](../knowledge-base/README.md) のとお�
 | ツール | すべてオフ |
 | Temperature | `0.3` |
 | Top P | 空欄（モデル既定） |
-| 最大アウトプットトークン | `1024` |
+| 最大アウトプットトークン | `4096` |
 
 ### 2.2 共通ルール
 

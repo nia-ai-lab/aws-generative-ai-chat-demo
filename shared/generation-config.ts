@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const DEFAULT_GENERATION_CONFIG = {
   temperature: 0.3,
   topP: null,
-  maxOutputTokens: 1_024,
+  maxOutputTokens: 4_096,
 } as const;
 
 export const generationConfigSchema = z.object({

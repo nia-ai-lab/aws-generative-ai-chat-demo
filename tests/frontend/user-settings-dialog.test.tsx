@@ -9,7 +9,7 @@ describe('UserSettingsDialog', () => {
         open
         value=""
         modelKey="nova-2-lite"
-        generationConfig={{ temperature: 0.3, topP: null, maxOutputTokens: 1_024 }}
+        generationConfig={{ temperature: 0.3, topP: null, maxOutputTokens: 4_096 }}
         guardrailKeys={['denied-topic-travel', 'blocked-word-pineapple']}
         requiredGuardrailKeys={['content-safety', 'prompt-attack']}
         toolKeys={['rag']}
@@ -23,7 +23,7 @@ describe('UserSettingsDialog', () => {
     expect(html).toContain('Top P');
     expect(html).toContain('placeholder="モデル既定"');
     expect(html).toContain('最大アウトプットトークン');
-    expect(html).toContain('value="1024"');
+    expect(html).toContain('value="4096"');
     expect(html).toContain('デフォルトに戻す');
     expect(html).toContain('reset-button');
     expect(html).toContain('Guardrail');
@@ -47,7 +47,7 @@ describe('UserSettingsDialog', () => {
         open
         value=""
         modelKey="claude-sonnet-5-5"
-        generationConfig={{ temperature: 0.3, topP: null, maxOutputTokens: 1_024 }}
+        generationConfig={{ temperature: 0.3, topP: null, maxOutputTokens: 4_096 }}
         guardrailKeys={[]}
         requiredGuardrailKeys={[]}
         toolKeys={[]}

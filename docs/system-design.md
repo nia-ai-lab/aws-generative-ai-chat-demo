@@ -338,7 +338,7 @@ AgentCore Runtime は `runtimeSessionId` ごとに専用 microVM を割り当て
 
 | 項目 | 値 |
 |---|---|
-| `maxTokens` | 1,024 |
+| `maxTokens` | 4,096 |
 | `temperature` | 0.3 |
 | `topP` | 未指定（モデル既定） |
 | リトライ | Throttling、ServiceUnavailable、ModelTimeout のみ指数バックオフ |
@@ -527,7 +527,7 @@ sequenceDiagram
   "generationConfig": {
     "temperature": 0.3,
     "topP": null,
-    "maxOutputTokens": 1024
+    "maxOutputTokens": 4096
   }
 }
 ```
@@ -619,7 +619,7 @@ data: {"finishReason":"end_turn","usage":{"inputTokens":120,"outputTokens":85,"e
 - `$DATETIME` / `$TIMEZONE` 挿入ボタン
 - Temperature（初期値0.3）
 - Top P（初期状態はモデル既定）
-- 最大アウトプットトークン（初期値1,024）
+- 最大アウトプットトークン（初期値4,096）
 - Guardrail（初期値なし。事前定義プリセットをチェックボックスで複数選択）
 - 管理者必須 Guardrail がある場合は解除不能であることを表示
 - Web検索、RAG（社内規定検索）、RAG（製品情報検索）、人事ツール。初期値はすべてオフで、管理者が許可した項目だけを表示

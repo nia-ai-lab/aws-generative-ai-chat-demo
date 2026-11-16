@@ -316,6 +316,8 @@ Web Search connectorはRuntimeと同じ東京リージョン`ap-northeast-1`にA
 
 この方式により、同一の共有 Cognito ユーザーでも `browserSessionId` と `conversationSessionId` が異なる限り、メモリが混在しない。
 
+AgentCore Runtime はプラットフォームバージョン V2 を使用する。V2 は初期化済みのスナップショットから各セッションを復元するため、コールドスタートが短い。スナップショットはモジュール読み込み時の状態を全セッションで共有するので、エージェントは乱数・時刻・ID をリクエスト処理中に生成し、Python の `random` は各インスタンスの最初のリクエストで再シードする。V2 はバージョン更新時にスナップショットを作成するため、Runtime の更新は数分かかる。
+
 AgentCore Runtime は `runtimeSessionId` ごとに専用 microVM を割り当てるため、Runtime 内のメモリとファイルシステムもセッション間で分離される。一方、Runtime はセッションと利用者の対応を強制しないため、Chat Lambda は JWT の `sub`、`browserSessionId`、`conversationSessionId` からサーバー側で Runtime セッション ID と `actor_id` を導出し、クライアント指定値をそのまま認可境界に使用しない。Runtime のローカル状態はライフサイクル終了時に消失し得るため、永続性が必要な状態にはブラウザ保存または AgentCore Memory を使用する。
 
 ### 3.10 Bedrock モデル

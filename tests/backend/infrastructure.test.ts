@@ -19,6 +19,12 @@ describe('application infrastructure', () => {
     template = synthesizeTemplate();
   }, 20_000);
 
+  it('runs the agent on AgentCore Runtime platform version V2', () => {
+    template.hasResourceProperties('AWS::BedrockAgentCore::Runtime', {
+      PlatformVersion: 'V2',
+    });
+  });
+
   it('uses Lambda access-token authorization and AgentCore JWT authorization', () => {
     template.resourceCountIs('AWS::ApiGateway::Authorizer', 1);
     template.hasResourceProperties('AWS::Lambda::Function', {

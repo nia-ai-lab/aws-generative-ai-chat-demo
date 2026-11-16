@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import random
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -16,10 +17,24 @@ from schemas import ChatInvocation
 
 app = BedrockAgentCoreApp()
 logger = logging.getLogger(__name__)
+_random_reseeded = False
+
+
+def reseed_random_after_restore() -> None:
+    """Reseed Python's shared random state once per restored instance.
+
+    Runtime platform version V2 restores every session from one snapshot, so each instance
+    would otherwise inherit the same `random` state (used for OpenTelemetry span IDs).
+    """
+    global _random_reseeded
+    if not _random_reseeded:
+        random.seed()  # Draws fresh entropy from os.urandom after the restore.
+        _random_reseeded = True
 
 
 @app.entrypoint
 async def invoke(payload: dict[str, Any], context: RequestContext) -> AsyncIterator[dict[str, Any]]:
+    reseed_random_after_restore()
     try:
         invocation = ChatInvocation.model_validate(payload)
     except ValidationError:

@@ -836,6 +836,9 @@ export function createApplicationResources(scope: Construct, props: ApplicationS
     },
     tracingEnabled: true,
   });
+  // Platform version V2 restores each session from a snapshot (faster cold starts).
+  // The L2 construct has no property for it yet, so set it on the CloudFormation resource.
+  (runtime.node.defaultChild as agentcore.CfnRuntime).addPropertyOverride('PlatformVersion', 'V2');
   runtime.node.addDependency(
     memory,
     knowledgeBase,
